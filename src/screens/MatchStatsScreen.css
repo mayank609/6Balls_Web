@@ -1,0 +1,401 @@
+.match-stats {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    background-color: var(--color-bg-dark, #0A0A0F);
+    color: white;
+    font-family: inherit;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+/* Backgrounds */
+.match-stats__grid-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 0;
+    pointer-events: none;
+    animation: moveGrid 5s linear infinite;
+}
+
+@keyframes moveGrid {
+    from {
+        background-position: 0 0;
+    }
+
+    to {
+        background-position: 0 40px;
+    }
+}
+
+.match-stats__pitch-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('/public/assets/images/bg_pitch.jpg');
+    background-size: cover;
+    opacity: 0.1;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Topbar */
+.match-stats__topbar {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+}
+
+.ms-back-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.ms-title {
+    color: var(--color-gaming-green, #4AE54A);
+    font-weight: 900;
+    font-size: 20px;
+    letter-spacing: 2px;
+    margin: 0;
+}
+
+.ms-content {
+    position: relative;
+    z-index: 5;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    align-items: center;
+}
+
+/* Stadium Card */
+.ms-holo-card {
+    width: 100%;
+    min-height: 160px;
+    position: relative;
+}
+
+.ms-holo-card__glass {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 26, 46, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+}
+
+.ms-accent {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--color-gaming-green, #4AE54A);
+}
+
+.ms-accent--tl {
+    top: 0;
+    left: 0;
+    border-right: none;
+    border-bottom: none;
+    border-top-left-radius: 24px;
+}
+
+.ms-accent--br {
+    bottom: 0;
+    right: 0;
+    border-left: none;
+    border-top: none;
+    border-bottom-right-radius: 24px;
+}
+
+.ms-stadium-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ms-stadium-icon {
+    width: 36px;
+    height: 36px;
+    background: rgba(74, 229, 74, 0.2);
+    border: 1px solid var(--color-gaming-green, #4AE54A);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-gaming-green, #4AE54A);
+}
+
+.ms-stadium-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.ms-stadium-name {
+    font-weight: 900;
+    font-size: 16px;
+    letter-spacing: 1px;
+}
+
+.ms-stadium-city {
+    font-size: 10px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.ms-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 16px 0;
+}
+
+.ms-pitch-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ms-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.ms-stat-icon {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.ms-stat-label {
+    font-size: 9px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.6);
+    letter-spacing: 1px;
+}
+
+.ms-stat-value {
+    font-size: 13px;
+    font-weight: bold;
+}
+
+/* Section Header */
+.ms-section-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 24px 0 16px 0;
+}
+
+.ms-line {
+    flex: 1;
+    height: 1px;
+    background: rgba(204, 255, 0, 0.5);
+    /* secondary color fade */
+}
+
+.ms-section-title {
+    color: var(--color-neon-green, #CCFF00);
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    padding: 0 12px;
+}
+
+/* Player Cards */
+.ms-player-card {
+    position: relative;
+    width: 100%;
+    height: 140px;
+    margin-bottom: 24px;
+}
+
+.ms-player-glass {
+    position: absolute;
+    top: 10px;
+    right: 0;
+    bottom: 0;
+    left: 20px;
+    background: rgba(26, 26, 46, 0.6);
+    border-radius: 0 24px 24px 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.ms-player-glass--blue {
+    border-left-color: rgba(59, 130, 246, 0.5);
+}
+
+.ms-player-glass--red {
+    border-left-color: rgba(239, 68, 68, 0.5);
+}
+
+.ms-player-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.ms-player-gradient--blue {
+    background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), transparent);
+}
+
+.ms-player-gradient--red {
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.1), transparent);
+}
+
+.ms-player-details {
+    position: absolute;
+    top: 0;
+    left: 80px;
+    right: 0;
+    bottom: 0;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.ms-player-name {
+    font-weight: 900;
+    font-size: 20px;
+    letter-spacing: 0.5px;
+    margin: 0;
+}
+
+.ms-player-role {
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+}
+
+.ms-text--blue {
+    color: #3B82F6;
+}
+
+.ms-text--red {
+    color: #EF4444;
+}
+
+.ms-player-metrics {
+    display: flex;
+    gap: 8px;
+}
+
+.ms-metric-chip {
+    background: rgba(10, 10, 15, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 9px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.ms-player-avatar {
+    position: absolute;
+    left: 0;
+    top: -10px;
+    width: 100px;
+    height: 100px;
+    background: var(--color-bg-dark, #0A0A0F);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ms-avatar--blue {
+    border: 2px solid #3B82F6;
+    box-shadow: 0 0 10px #3B82F6;
+}
+
+.ms-avatar--red {
+    border: 2px solid #EF4444;
+    box-shadow: 0 0 10px #EF4444;
+}
+
+.ms-avatar-placeholder {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+}
+
+/* VS Badge */
+.ms-vs-badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--color-bg-dark, #0A0A0F);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 900;
+    z-index: 10;
+    margin-top: -12px;
+    margin-bottom: 12px;
+    border: 2px solid transparent;
+    background-image: linear-gradient(var(--color-bg-dark), var(--color-bg-dark)),
+        linear-gradient(to right, #3B82F6, #EF4444);
+    background-origin: border-box;
+    background-clip: content-box, border-box;
+}
+
+/* Gamified CTA Button */
+.ms-gamified-btn {
+    width: 100%;
+    height: 64px;
+    border-radius: 16px;
+    background: var(--color-gaming-green, #4AE54A);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: black;
+    cursor: pointer;
+    box-shadow: 0 16px 20px rgba(74, 229, 74, 0.2);
+    animation: msPulse 1.6s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ms-gamified-text {
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 1px;
+}
+
+@keyframes msPulse {
+    from {
+        transform: scale(1);
+    }
+
+    to {
+        transform: scale(1.02);
+    }
+}

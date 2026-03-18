@@ -1,0 +1,90 @@
+.vs-shield {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Cosmic glow */
+.vs-cosmic-glow {
+    position: absolute;
+    width: 150%;
+    height: 150%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.12), transparent 70%);
+    animation: pulseGlow 2s ease-in-out infinite alternate;
+}
+
+/* Outer ring */
+.vs-outer-ring {
+    position: absolute;
+    width: 90%;
+    height: 90%;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: rotateRing 8s linear infinite;
+}
+
+.vs-ring-dot {
+    position: absolute;
+    top: 50%;
+    right: -3px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: white;
+    transform: translateY(-50%);
+}
+
+/* Inner ring */
+.vs-inner-ring {
+    position: absolute;
+    width: 70%;
+    height: 70%;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: rotateRing 8s linear infinite;
+}
+
+/* Core */
+.vs-core-orb {
+    position: relative;
+    width: 50%;
+    height: 50%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #000, #1a1a1a);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.vs-text {
+    color: white;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+@keyframes rotateRing {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulseGlow {
+    from {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+}

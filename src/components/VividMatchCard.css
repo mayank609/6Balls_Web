@@ -1,0 +1,182 @@
+.vivid-match-card {
+    width: 100%;
+    height: 140px;
+    border-radius: 24px;
+    position: relative;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.15s ease;
+    cursor: pointer;
+}
+
+.vivid-match-card:active {
+    transform: scale(0.96);
+}
+
+.vivid-hot {
+    border: 2px solid;
+    border-image: linear-gradient(to right, var(--color-secondary), transparent) 1;
+    /* border-image breaks border-radius, use outline instead */
+    border: none;
+    outline: 2px solid rgba(255, 215, 0, 0.4);
+}
+
+/* Background effects */
+.vivid-hot-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.15), transparent 70%);
+}
+
+.vivid-spotlight {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.vivid-spotlight-left {
+    top: -40px;
+    left: -40px;
+}
+
+.vivid-spotlight-right {
+    top: -40px;
+    right: -40px;
+}
+
+.vivid-field-line {
+    position: absolute;
+    top: 40%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Content */
+.vivid-card-content {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.vivid-teams-row {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+}
+
+.vivid-team-unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.vivid-team-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vivid-team-avatar span {
+    color: white;
+    font-weight: 900;
+    font-size: 13px;
+}
+
+.vivid-team-city {
+    color: #888;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+/* Bottom Bar */
+.vivid-bottom-bar {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.4));
+}
+
+.vivid-bottom-hot {
+    background: linear-gradient(to bottom, transparent, rgba(67, 44, 3, 0.8));
+}
+
+.vivid-bottom-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.contest-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.badge-hot {
+    background: var(--color-secondary);
+}
+
+.badge-hot span {
+    color: black;
+    font-size: 8px;
+    font-weight: 900;
+}
+
+.badge-normal {
+    background: rgba(0, 255, 0, 0.2);
+    border: 1px solid rgba(0, 255, 0, 0.4);
+}
+
+.badge-normal span {
+    color: var(--color-primary);
+    font-size: 8px;
+    font-weight: 900;
+}
+
+.pool-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.pool-label {
+    color: #888;
+    font-size: 8px;
+    font-weight: 700;
+}
+
+.pool-value {
+    color: white;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+/* Responsive */
+@media (max-width: 400px) {
+    .vivid-team-avatar {
+        width: 36px;
+        height: 36px;
+    }
+
+    .vivid-team-avatar span {
+        font-size: 11px;
+    }
+}

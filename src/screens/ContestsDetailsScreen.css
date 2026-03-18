@@ -1,0 +1,273 @@
+.contests-details {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--color-bg-dark, #0A0A0F);
+    color: white;
+    font-family: inherit;
+}
+
+/* Header */
+.cd-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: transparent;
+}
+
+.cd-back-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+}
+
+.cd-title {
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0;
+}
+
+.cd-content {
+    flex: 1;
+    padding: 16px;
+    padding-bottom: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Team Header */
+.cd-team-header {
+    height: 70px;
+    background: linear-gradient(135deg, #FF00FF, #FF0000);
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+}
+
+.cd-team-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cd-team-logo {
+    width: 40px;
+    height: 40px;
+    background: white;
+    border-radius: 50%;
+    color: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+}
+
+.cd-team-name {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.cd-vs {
+    font-weight: 900;
+    font-style: italic;
+    opacity: 0.8;
+}
+
+/* Contest Info Card */
+.cd-info-card {
+    background: rgba(255, 249, 196, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.cd-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cd-badge {
+    background: rgba(255, 255, 255, 0.8);
+    color: black;
+    padding: 6px 12px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.cd-prize-coins {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: bold;
+    font-size: 21px;
+}
+
+.cd-prize-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cd-pool-icon {
+    width: 30px;
+    height: 30px;
+    background: #FFD700;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cd-pool-amount {
+    font-weight: bold;
+    font-size: 24px;
+}
+
+/* Progress */
+.cd-progress-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cd-progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.cd-progress-fill {
+    height: 100%;
+    background-color: #FF4500;
+    border-radius: 4px;
+}
+
+.cd-progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.cd-spots-left {
+    color: #FF4500;
+}
+
+.cd-spots-total {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Stats Row */
+.cd-stats-row {
+    display: flex;
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    padding: 12px;
+    justify-content: space-between;
+}
+
+.cd-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.cd-stat-label {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+}
+
+.cd-stat-value {
+    font-size: 14px;
+    font-weight: bold;
+    color: #FFD700;
+}
+
+/* Leaderboard */
+.cd-leaderboard {
+    margin-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 16px;
+}
+
+.cd-leaderboard-title {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+}
+
+.cd-rankings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cd-rank-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+}
+
+.cd-rank {
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.cd-rank-prize {
+    font-weight: bold;
+    color: white;
+}
+
+/* Bottom Bar */
+.cd-bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--color-bg-dark, #0A0A0F);
+    padding: 16px;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.cd-join-btn {
+    width: 100%;
+    max-width: 400px;
+    height: 48px;
+    border-radius: 24px;
+    background-color: var(--color-gaming-green, #4AE54A);
+    color: black;
+    font-weight: 900;
+    font-size: 16px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.cd-join-btn:active {
+    transform: scale(0.98);
+}

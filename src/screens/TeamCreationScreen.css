@@ -1,0 +1,343 @@
+.team-creation {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    background-color: var(--color-bg-dark, #0A0A0F);
+    color: white;
+    font-family: inherit;
+    display: flex;
+    flex-direction: column;
+}
+
+.team-creation__bg-image {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('/public/assets/images/stadium_background.jpg');
+    background-size: cover;
+    background-position: center;
+    opacity: 0.2;
+    filter: blur(3px);
+    z-index: 0;
+    pointer-events: none;
+}
+
+.team-creation__bg-gradient {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(10, 10, 15, 0.7), rgba(10, 10, 15, 0.9));
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* TOPBAR */
+.team-creation__topbar {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+}
+
+.tc-back-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 12px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+}
+
+.tc-title {
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    margin: 0;
+}
+
+.tc-credits {
+    background: transparent;
+    border: 1px solid rgba(74, 229, 74, 0.3);
+    border-radius: 16px;
+    padding: 6px 12px;
+    color: var(--color-gaming-green, #4AE54A);
+    font-weight: bold;
+    font-size: 12px;
+}
+
+/* CONTENT */
+.tc-content {
+    flex: 1;
+    z-index: 5;
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* MATCH HEADER CARD */
+.tc-header-card {
+    background: var(--color-card-dark, #1A1A2E);
+    border-radius: 20px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 130px;
+    box-sizing: border-box;
+}
+
+.tc-header-card__max {
+    text-align: center;
+    color: gray;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.tc-header-card__teams {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+.tc-team-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.tc-team-name {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.tc-team-count {
+    font-size: 14px;
+    color: gray;
+}
+
+.tc-timer {
+    color: #FF4500;
+    font-weight: bold;
+}
+
+.tc-progress {
+    margin-top: auto;
+}
+
+.tc-progress__labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: gray;
+    margin-bottom: 6px;
+}
+
+.tc-progress__count {
+    color: white;
+    font-weight: bold;
+}
+
+.tc-progress__bar-container {
+    display: flex;
+    gap: 2px;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.tc-progress__segment {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.tc-progress__segment--active {
+    background: var(--color-gaming-green, #4AE54A);
+}
+
+/* TABS */
+.tc-tabs-scroll {
+    margin-top: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.tc-tabs-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.tc-tabs {
+    display: flex;
+    gap: 8px;
+}
+
+.tc-tab {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 8px 16px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.tc-tab--active {
+    background: var(--color-gaming-green, #4AE54A);
+    color: black;
+    border-color: transparent;
+}
+
+.tc-instruction {
+    text-align: center;
+    color: gray;
+    font-size: 12px;
+    margin: 12px 0 16px;
+}
+
+/* PLAYER LIST */
+.tc-players {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 100px;
+}
+
+.player-card {
+    background: rgba(26, 26, 46, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    height: 72px;
+    box-sizing: border-box;
+    transition: all 0.2s;
+}
+
+.player-card--selected {
+    background: rgba(74, 229, 74, 0.15);
+    border-color: var(--color-gaming-green, #4AE54A);
+}
+
+.player-card__avatar {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    margin-right: 12px;
+}
+
+.player-card__avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 1px solid white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.player-card__badge-selected {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 16px;
+    height: 16px;
+    background: var(--color-gaming-green, #4AE54A);
+    border: 2px solid var(--color-card-dark, #1A1A2E);
+    border-radius: 50%;
+}
+
+.player-card__info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.player-card__name {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.player-card__role {
+    font-size: 12px;
+    color: gray;
+}
+
+.player-card__role--selected {
+    color: var(--color-gaming-green, #4AE54A);
+}
+
+.player-card__credits {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-right: 12px;
+}
+
+.player-card__credit-val {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.player-card__credit-lbl {
+    font-size: 10px;
+    color: gray;
+}
+
+.player-card__action {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: var(--color-gaming-green, #4AE54A);
+}
+
+.player-card__action--selected {
+    color: #FF4500;
+}
+
+/* BOTTOM BAR */
+.tc-bottombar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--color-card-dark, #1A1A2E);
+    padding: 16px;
+    box-sizing: border-box;
+    display: flex;
+    gap: 16px;
+    box-shadow: 0 -8px 16px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+
+.tc-btn-preview,
+.tc-btn-continue {
+    flex: 1;
+    height: 48px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.tc-btn-preview {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: white;
+}
+
+.tc-btn-continue {
+    background: var(--color-gaming-green, #4AE54A);
+    border: none;
+    color: black;
+}

@@ -1,0 +1,365 @@
+.tab-container {
+    padding: 16px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tab-title {
+    font-size: 18px;
+    font-weight: 900;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: 1px;
+}
+
+.inline-icon {
+    color: var(--color-primary);
+}
+
+.glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+/* ═══ SHOP ═══ */
+.shop-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.shop-card {
+    border-radius: var(--radius-lg);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    transition: transform 0.2s;
+}
+
+.shop-card:active {
+    transform: scale(0.95);
+}
+
+.shop-card--popular {
+    border-color: var(--color-primary);
+    background: linear-gradient(135deg, rgba(255, 107, 0, 0.1), transparent);
+}
+
+.shop-badge {
+    position: absolute;
+    top: -10px;
+    background: var(--color-primary);
+    color: #000;
+    font-size: 10px;
+    font-weight: 900;
+    padding: 4px 12px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.shop-coin-img {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 12px;
+}
+
+.shop-coins {
+    font-size: 20px;
+    font-weight: 900;
+    margin-bottom: 4px;
+}
+
+.shop-bonus {
+    font-size: 12px;
+    color: var(--color-secondary);
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.shop-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    font-weight: 900;
+    transition: background 0.2s;
+}
+
+.shop-card--popular .shop-btn {
+    background: var(--color-primary);
+    color: #000;
+}
+
+/* ═══ PREDICTIONS ═══ */
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.history-card {
+    border-radius: var(--radius-lg);
+    padding: 16px;
+}
+
+.history-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.history-match {
+    font-weight: 900;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.history-over {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.history-result {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 900;
+    padding: 4px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.text-green {
+    color: #10B981;
+}
+
+.text-red {
+    color: #EF4444;
+}
+
+.history-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.history-pred {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.history-pred strong {
+    color: var(--color-primary);
+    font-weight: 900;
+}
+
+.history-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.history-coins {
+    font-weight: 900;
+    font-size: 16px;
+}
+
+.history-date {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* ═══ BATTLE ═══ */
+.battle-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.battle-hero {
+    border-radius: var(--radius-xl);
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 32px;
+    background: linear-gradient(to bottom, rgba(255, 107, 0, 0.1), rgba(0, 0, 0, 0.4));
+    border-color: rgba(255, 107, 0, 0.3);
+}
+
+.battle-icon {
+    margin-bottom: 16px;
+    filter: drop-shadow(0 0 20px rgba(255, 107, 0, 0.5));
+}
+
+.battle-hero h3 {
+    font-size: 24px;
+    font-weight: 900;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.battle-hero p {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 24px;
+}
+
+.battle-btn {
+    width: 100%;
+    max-width: 240px;
+    height: 48px;
+    background: var(--color-primary);
+    color: #000;
+    border-radius: var(--radius-md);
+    font-weight: 900;
+    font-size: 14px;
+    box-shadow: 0 10px 20px rgba(255, 107, 0, 0.3);
+}
+
+.sub-title {
+    font-size: 14px;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+}
+
+.battle-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.battle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-radius: var(--radius-md);
+}
+
+.battle-player {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.battle-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 107, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+}
+
+.battle-name {
+    font-weight: 900;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.battle-rating {
+    font-size: 11px;
+    color: var(--color-secondary);
+    font-weight: 700;
+}
+
+.battle-action {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.battle-entry {
+    font-size: 10px;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.battle-join-btn {
+    padding: 6px 20px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    font-size: 12px;
+    font-weight: 900;
+    transition: background 0.2s;
+}
+
+.battle-join-btn:hover {
+    background: var(--color-primary);
+    color: #000;
+}
+
+/* ═══ RANKS ═══ */
+.rank-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.rank-row {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-radius: var(--radius-md);
+    gap: 16px;
+}
+
+.rank-row--top {
+    background: linear-gradient(90deg, rgba(255, 107, 0, 0.15), transparent);
+    border-left: 3px solid var(--color-primary);
+}
+
+.rank-badge {
+    width: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.rank-num {
+    font-size: 18px;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.rank-name {
+    flex: 1;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.rank-points {
+    font-size: 14px;
+    font-weight: 900;
+    color: var(--color-secondary);
+}
