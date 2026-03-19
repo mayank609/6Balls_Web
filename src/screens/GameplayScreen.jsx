@@ -31,58 +31,12 @@ const GameplayScreen = () => {
     const [showResult, setShowResult] = useState(false);
     const [outcomeVid, setOutcomeVid] = useState(null);
     const [boomWin, setBoomWin] = useState(null);
+    const [flyWin, setFlyWin] = useState(null);
     const videoRef = useRef(null);
     const timerRef = useRef(null);
 
     const totalCoins = playCoins + profitCoins;
     const totalAllocated = Object.values(allocations).reduce((s, arr) => s + arr.reduce((a, b) => a + b, 0), 0);
-
-    // Timer countdown
-    useEffect(() => {
-        setTimeLeft(15);
-        timerRef.current = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    clearInterval(timerRef.current);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-        return () => clearInterval(timerRef.current);
-    }, [currentBall]);
-
-    // Auto-lock when timer runs out
-    useEffect(() => {
-        if (timeLeft === 0 && totalAllocated > 0 && !isAnimating) {
-            triggerLock();
-        }
-    }, [timeLeft]);
-
-    const addCoin = (label) => {
-        if (totalAllocated + activeDenom > totalCoins || isAnimating) return;
-        setAllocations(prev => ({
-            ...prev,
-            [label]: [...(prev[label] || []), activeDenom],
-        }));
-        setAllocHistory(prev => [...prev, label]);
-    };
-
-    const undoLast = () => {
-        if (allocHistory.length === 0) return;
-        const lastLabel = allocHistory[allocHistory.length - 1];
-        setAllocHistory(prev => prev.slice(0, -1));
-        setAllocations(prev => {
-            const arr = [...(prev[lastLabel] || [])];
-            arr.pop();
-            return { ...prev, [lastLabel]: arr };
-        });
-    };
-
-    const resetAll = () => {
-        setAllocations({});
-        setAllocHistory([]);
-    };
 
     const triggerLock = useCallback(() => {
         if (totalAllocated === 0 || isAnimating) return;
@@ -114,8 +68,9 @@ const GameplayScreen = () => {
         }
         const sideKey = isLeg ? 'LEG SIDE' : 'OFF SIDE';
         if (allocations[sideKey]) {
-            winnings += allocations[sideKey].reduce((a, b) => a + b, 0) * 2;
+            winnings += allocations[sideKey].reduce((a, b) => a + b, 0) * 1; // 1x side multiplier now
         }
+
         setTimeout(() => {
             setOutcomeVid(null);
             setShowResult(false);
@@ -123,8 +78,10 @@ const GameplayScreen = () => {
 
             if (winnings > 0) {
                 setBoomWin(winnings);
+                setFlyWin(winnings);
+                setTimeout(() => setProfitCoins(p => p + winnings), 1200);
+                setTimeout(() => setFlyWin(null), 1400);
                 setTimeout(() => setBoomWin(null), 2500);
-                setProfitCoins(p => p + winnings);
             }
 
             setPlayCoins(p => p - Math.min(cost, p));
@@ -141,6 +98,53 @@ const GameplayScreen = () => {
             setIsAnimating(false);
         }, 3500);
     }, [allocations, totalAllocated, isAnimating, currentBall, navigate]);
+
+    // Timer countdown
+    useEffect(() => {
+        setTimeLeft(15);
+        timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timerRef.current);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timerRef.current);
+    }, [currentBall]);
+
+    // Auto-lock when timer runs out
+    useEffect(() => {
+        if (timeLeft === 0 && totalAllocated > 0 && !isAnimating) {
+            triggerLock();
+        }
+    }, [timeLeft, totalAllocated, isAnimating, triggerLock]);
+
+    const addCoin = (label) => {
+        if (totalAllocated + activeDenom > totalCoins || isAnimating) return;
+        setAllocations(prev => ({
+            ...prev,
+            [label]: [...(prev[label] || []), activeDenom],
+        }));
+        setAllocHistory(prev => [...prev, label]);
+    };
+
+    const undoLast = () => {
+        if (allocHistory.length === 0) return;
+        const lastLabel = allocHistory[allocHistory.length - 1];
+        setAllocHistory(prev => prev.slice(0, -1));
+        setAllocations(prev => {
+            const arr = [...(prev[lastLabel] || [])];
+            arr.pop();
+            return { ...prev, [lastLabel]: arr };
+        });
+    };
+
+    const resetAll = () => {
+        setAllocations({});
+        setAllocHistory([]);
+    };
 
     const timerStr = `${String(Math.floor(timeLeft / 60)).padStart(2, '0')}:${String(timeLeft % 60).padStart(2, '0')}`;
 
@@ -261,7 +265,7 @@ const GameplayScreen = () => {
                             disabled={isAnimating}
                         >
                             <span>{side}</span>
-                            <span className="game__side-mult">2x</span>
+                            <span className="game__side-mult">1x</span>
                             {total > 0 && <div className="game__side-coins">{total}</div>}
                         </button>
                     );
@@ -298,15 +302,11 @@ const GameplayScreen = () => {
                     ))}
                 </div>
 
-                {/* LOCK BUTTON */}
-                <button
-                    className={`game__lock-btn ${totalAllocated > 0 && !isAnimating ? 'game__lock-btn--active' : ''}`}
-                    onClick={triggerLock}
-                    disabled={totalAllocated === 0 || isAnimating}
-                >
-                    {isAnimating ? 'BOWLING...' : `LOCK PREDICTION (${totalAllocated} coins)`}
-                </button>
             </div>
+
+            {flyWin !== null && (
+                <div className="game__fly-coin">+{flyWin}</div>
+            )}
 
             {/* BOOM WIN OVERLAY */}
             {boomWin !== null && (

@@ -443,6 +443,38 @@
     box-shadow: 0 0 60px rgba(255, 107, 0, 0.4);
 }
 
+.game__fly-coin {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 210;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: var(--color-primary);
+    color: #000;
+    font-size: 16px;
+    font-weight: 900;
+    box-shadow: 0 8px 20px rgba(255, 107, 0, 0.45);
+    animation: flyToWallet 1.3s ease-in-out forwards;
+}
+
+@keyframes flyToWallet {
+    0% {
+        top: 50%;
+        left: 50%;
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    100% {
+        top: 14px;
+        left: calc(100% - 70px);
+        opacity: 0;
+        transform: translate(0, 0) scale(0.7);
+    }
+}
+
 .game__boom-text {
     font-size: 14px;
     color: rgba(255, 255, 255, 0.7);
