@@ -1,11 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
+import { useGoogleLogin } from '@react-oauth/google';
 import './LoginScreen.css';
 
 const LoginScreen = () => {
     const navigate = useNavigate();
     const [phone, setPhone] = useState('');
+
+    const loginWithGoogle = useGoogleLogin({
+        onSuccess: (codeResponse) => {
+            console.log('Google Login Success:', codeResponse);
+            navigate('/lobby');
+        },
+        onError: (error) => console.log('Google Login Failed:', error),
+    });
 
     return (
         <div className="login">
@@ -56,7 +65,7 @@ const LoginScreen = () => {
                     </div>
 
                     <div className="login__social-row">
-                        <button className="login__social-btn glass">G</button>
+                        <button className="login__social-btn glass" onClick={() => loginWithGoogle()}>G</button>
                         <button className="login__social-btn glass">f</button>
                         <button className="login__social-btn glass">🍎</button>
                     </div>
