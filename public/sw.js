@@ -64,7 +64,7 @@ self.addEventListener('fetch', (event) => {
     request.url.endsWith('.js') ||
     request.url.endsWith('.map')
   ) {
-    event.respondWith(
+    return event.respondWith(
       caches.match(request).then((response) => {
         if (response) {
           return response;
@@ -87,7 +87,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Network-first strategy for API calls and HTML
-  event.respondWith(
+  return event.respondWith(
     fetch(request)
       .then((response) => {
         if (!response || response.status !== 200 || response.type !== 'basic') {
