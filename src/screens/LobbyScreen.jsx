@@ -20,7 +20,7 @@ const LobbyScreen = () => {
             try {
                 // Assuming backend route is /matches as seen in cmd/server/main.go
                 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-                const response = await fetch(`${apiUrl}/matches`); 
+                const response = await fetch(`${apiUrl}/api/matches`); 
                 if (!response.ok) throw new Error('Failed to fetch matches');
                 const data = await response.json();
                 
