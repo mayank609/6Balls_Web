@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, Bell, Home, ShoppingCart, List, Star, ChevronRight, User, LogOut, Award, Users, X } from 'lucide-react';
 import ShopTab from './tabs/ShopTab';
@@ -7,17 +7,66 @@ import BattleTab from './tabs/BattleTab';
 import RanksTab from './tabs/RanksTab';
 import './LobbyScreen.css';
 
-const matches = [
-    { t1: 'JB', n1: 'BUMRAH', t2: 'VK', n2: 'KOHLI', info: 'OVER 19.1 • FINAL OVER', time: 'LIVE', hot: true },
-    { t1: 'MS', n1: 'SHAMI', t2: 'RG', n2: 'ROHIT', info: 'OVER 15.3 • CRUCIAL', time: '05h 45m', hot: false },
-    { t1: 'RK', n1: 'RASHID', t2: 'HP', n2: 'PANDYA', info: 'OVER 12.4 • LIVE', time: 'LIVE', hot: true },
-    { t1: 'SS', n1: 'STOKES', t2: 'AB', n2: 'DEVILLIERS', info: 'OVER 8.2 • POWERPLAY', time: '02h 10m', hot: false },
-];
-
 const LobbyScreen = () => {
     const navigate = useNavigate();
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('lobby');
+    const [matches, setMatches] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchFixtures = async () => {
+            try {
+                // Assuming backend route is /matches as seen in cmd/server/main.go
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+                const response = await fetch(`${apiUrl}/matches`); 
+                if (!response.ok) throw new Error('Failed to fetch matches');
+                const data = await response.json();
+                
+                // Map the backend FIXTURE schema to the UI requirements
+                // schema: { team1, team2, datetime, league }
+                const mappedMatches = data.map(fixture => ({
+                    t1: fixture.team1.substring(0, 3).toUpperCase(), // Short code
+                    n1: fixture.team1,
+                    t2: fixture.team2.substring(0, 3).toUpperCase(), // Short code
+                    n2: fixture.team2,
+                    info: fixture.league, // Show league in info section
+                    time: formatMatchTime(fixture.datetime),
+                    hot: isMatchLive(fixture.datetime), // Simple logic to decide if hot/live
+                    raw: fixture // keep raw data for passing to next screen
+                }));
+                setMatches(mappedMatches);
+            } catch (err) {
+                console.error("Error fetching fixtures:", err);
+                setError(err.message);
+                // Fallback to empty list or mock data on error if preferred
+                setMatches([]); 
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchFixtures();
+    }, []);
+
+    // Helper to decide if we show "LIVE" or a countdown time
+    const formatMatchTime = (datetimeStr) => {
+        const matchDate = new Date(datetimeStr);
+        const now = new Date();
+        const diffMs = matchDate - now;
+
+        if (diffMs <= 0 && diffMs > -4 * 60 * 60 * 1000) return 'LIVE'; // Assume live if started in last 4 hours
+        if (diffMs < 0) return 'FINISHED';
+        
+        const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        return `${String(diffHrs).padStart(2, '0')}h ${String(diffMins).padStart(2, '0')}m`;
+    };
+
+    const isMatchLive = (datetimeStr) => {
+        return formatMatchTime(datetimeStr) === 'LIVE';
+    };
 
     return (
         <div className="lobby">
@@ -83,47 +132,59 @@ const LobbyScreen = () => {
                             <span>TOP MATCHUPS</span>
                         </div>
 
-                        <div className="lobby__cards">
-                            {matches.map((m, i) => (
-                                <div key={i} className={`mcard ${m.hot ? 'mcard--hot' : ''}`} onClick={() => navigate('/match-stats')}>
-                                    <div className="mcard__top">
-                                        <span className="mcard__info">{m.info}</span>
-                                        {m.time === 'LIVE' && <span className="mcard__live">LIVE</span>}
-                                    </div>
+                        {loading ? (
+                            <div style={{ padding: '2rem', textAlign: 'center', color: '#fff' }}>
+                                Loading live matches...
+                            </div>
+                        ) : error || matches.length === 0 ? (
+                            <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>
+                                {error ? `Error: ${error}` : 'No live matches found.'}
+                                <br/>
+                                <small>Ensure backend is running at http://localhost:8080</small>
+                            </div>
+                        ) : (
+                            <div className="lobby__cards">
+                                {matches.map((m, i) => (
+                                    <div key={i} className={`mcard ${m.hot ? 'mcard--hot' : ''}`} onClick={() => navigate('/match-stats')}>
+                                        <div className="mcard__top">
+                                            <span className="mcard__info">{m.info}</span>
+                                            {m.time === 'LIVE' && <span className="mcard__live">LIVE</span>}
+                                        </div>
 
-                                    <div className="mcard__teams">
-                                        <div className="mcard__team">
-                                            <div className="mcard__avatar">{m.t1[0]}</div>
-                                            <div>
-                                                <div className="mcard__code">{m.t1}</div>
-                                                <div className="mcard__name">{m.n1.slice(0, 5)}</div>
+                                        <div className="mcard__teams">
+                                            <div className="mcard__team">
+                                                <div className="mcard__avatar">{m.t1[0]}</div>
+                                                <div>
+                                                    <div className="mcard__code">{m.t1}</div>
+                                                    <div className="mcard__name">{m.n1.slice(0, 5)}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mcard__vs">
+                                                <span>vs</span>
+                                                {m.time !== 'LIVE' && <span className="mcard__time">{m.time}</span>}
+                                            </div>
+
+                                            <div className="mcard__team mcard__team--right">
+                                                <div>
+                                                    <div className="mcard__code">{m.t2}</div>
+                                                    <div className="mcard__name">{m.n2.slice(0, 5)}</div>
+                                                </div>
+                                                <div className="mcard__avatar">{m.t2[0]}</div>
                                             </div>
                                         </div>
 
-                                        <div className="mcard__vs">
-                                            <span>vs</span>
-                                            {m.time !== 'LIVE' && <span className="mcard__time">{m.time}</span>}
-                                        </div>
-
-                                        <div className="mcard__team mcard__team--right">
-                                            <div>
-                                                <div className="mcard__code">{m.t2}</div>
-                                                <div className="mcard__name">{m.n2.slice(0, 5)}</div>
+                                        <div className="mcard__footer">
+                                            <div className="mcard__prize">
+                                                <Star size={14} color="var(--color-secondary)" />
+                                                <span>₹50 CRORE PRIZE POOL</span>
                                             </div>
-                                            <div className="mcard__avatar">{m.t2[0]}</div>
+                                            <ChevronRight size={18} color="rgba(255,255,255,0.6)" />
                                         </div>
                                     </div>
-
-                                    <div className="mcard__footer">
-                                        <div className="mcard__prize">
-                                            <Star size={14} color="var(--color-secondary)" />
-                                            <span>₹50 CRORE PRIZE POOL</span>
-                                        </div>
-                                        <ChevronRight size={18} color="rgba(255,255,255,0.6)" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </>
                 )}
                 {activeTab === 'shop' && <ShopTab />}

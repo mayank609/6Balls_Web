@@ -1,5 +1,5 @@
-const CACHE_NAME = 'crick11-v1';
-const RUNTIME_CACHE = 'crick11-runtime-v1';
+const CACHE_NAME = '6Balls-v1';
+const RUNTIME_CACHE = '6Balls-runtime-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

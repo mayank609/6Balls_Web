@@ -22,7 +22,7 @@ const GameplayScreen = () => {
     const [runs, setRuns] = useState(0);
     const [wickets, setWickets] = useState(0);
     const [ballsBowled, setBallsBowled] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(15);
+    const [timeLeft, setTimeLeft] = useState(0); // Driven by server now
     const [activeDenom, setActiveDenom] = useState(5);
     const [allocations, setAllocations] = useState({});
     const [allocHistory, setAllocHistory] = useState([]);
@@ -32,19 +32,125 @@ const GameplayScreen = () => {
     const [outcomeVid, setOutcomeVid] = useState(null);
     const [boomWin, setBoomWin] = useState(null);
     const [flyWin, setFlyWin] = useState(null);
+    const [gameState, setGameState] = useState('LOCKED'); // 'PLACE_BET', 'LOCKED', 'RESULT'
     const videoRef = useRef(null);
     const timerRef = useRef(null);
+    const ws = useRef(null);
 
     const totalCoins = playCoins + profitCoins;
     const totalAllocated = Object.values(allocations).reduce((s, arr) => s + arr.reduce((a, b) => a + b, 0), 0);
 
-    const triggerLock = useCallback(() => {
-        if (totalAllocated === 0 || isAnimating) return;
-        setIsAnimating(true);
-        clearInterval(timerRef.current);
+    // New state variables for real-time match data
+    const [batsman, setBatsman] = useState('KOHLI');
+    const [bowler, setBowler] = useState('BUMRAH');
+    const [scoreStr, setScoreStr] = useState('0/0');
+    // We already have currentBall state, we'll update it from server
 
-        const outcome = PREDICTION_OPTIONS[Math.floor(Math.random() * PREDICTION_OPTIONS.length)];
-        const isLeg = Math.random() > 0.5;
+    // WebSocket Connection
+    useEffect(() => {
+        // In a real app, you would pass the matchId and token in the URL or headers
+        // e.g. wss://6balls.live/ws/game?matchId=123&token=...
+        const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080';
+        ws.current = new WebSocket(`${wsUrl}/ws/game`); // Adjust URL as needed
+
+        ws.current.onopen = () => {
+            console.log("Connected to Game Server");
+        };
+
+        ws.current.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            
+            if (message.TYPE === "PLACE_BET") {
+                setGameState("PLACE_BET");
+                setIsAnimating(false);
+                setAllocations({});
+                setAllocHistory([]);
+                
+                // Update match data from server payload
+                if (message.DATA) {
+                    if (message.DATA.ball) setCurrentBall(parseInt(message.DATA.ball) || 1);
+                    if (message.DATA.score) setScoreStr(message.DATA.score);
+                    if (message.DATA.batsman) setBatsman(message.DATA.batsman);
+                    if (message.DATA.bowler) setBowler(message.DATA.bowler);
+                    
+                    // Sync balances with server source of truth
+                    if (message.DATA.playCoins !== undefined) setPlayCoins(Number(message.DATA.playCoins));
+                    if (message.DATA.profitCoins !== undefined) setProfitCoins(Number(message.DATA.profitCoins));
+                }
+
+                // Optionally start a local countdown if server sends duration
+                if (message.duration) {
+                    setTimeLeft(message.duration);
+                    if (timerRef.current) clearInterval(timerRef.current);
+                    timerRef.current = setInterval(() => {
+                        setTimeLeft(prev => Math.max(0, prev - 1));
+                    }, 1000);
+                }
+            } 
+            else if (message.TYPE === "LOCKED") {
+                setGameState("LOCKED");
+                if (timerRef.current) clearInterval(timerRef.current);
+                setTimeLeft(0);
+                
+                // When locked, send bets to server
+                submitBetsToServer();
+            } 
+            else if (message.TYPE === "RESULT") {
+                setGameState("RESULT");
+                // Fallback to empty object if DATA is undefined
+                const resultData = message.DATA || {}; 
+                handleServerResult(resultData.outcome, resultData.isLeg, resultData.winnings);
+            }
+            else if (message.TYPE === "BREAK") {
+                setGameState("BREAK");
+                if (timerRef.current) clearInterval(timerRef.current);
+                setTimeLeft(0);
+                setIsAnimating(false);
+            }
+        };
+
+        ws.current.onclose = () => {
+            console.log("Disconnected from Game Server");
+        };
+
+        return () => {
+            if (ws.current) {
+                ws.current.close();
+            }
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, []);
+
+    const submitBetsToServer = useCallback(() => {
+        if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+
+        // Convert allocations { "SIX": [10, 5], "OFF SIDE": [25] } to required array format
+        const bets = [];
+        Object.entries(allocations).forEach(([selection, amounts]) => {
+            const totalAmount = amounts.reduce((a, b) => a + b, 0);
+            if (totalAmount > 0) {
+                bets.push({ selection: selection, amount: totalAmount });
+            }
+        });
+
+        if (bets.length > 0) {
+             const payload = {
+                type: "SUBMIT_BET",
+                bets: bets
+             };
+             ws.current.send(JSON.stringify(payload));
+             
+             // Deduct play coins immediately on submission
+             setPlayCoins(p => Math.max(0, p - totalAllocated));
+             console.log("Bets submitted:", payload);
+        }
+    }, [allocations, totalAllocated]);
+
+    const handleServerResult = useCallback((serverOutcome, isLeg, serverWinnings) => {
+        setIsAnimating(true);
+
+        // Find matching option for video/colors
+        const outcome = PREDICTION_OPTIONS.find(opt => opt.label === serverOutcome) || PREDICTION_OPTIONS[0];
 
         const outcomeRuns = { SINGLE: 1, DOUBLE: 2, FOUR: 4, SIX: 6 }[outcome.label] || 0;
         setRuns(r => r + outcomeRuns);
@@ -59,70 +165,31 @@ const GameplayScreen = () => {
         setOutcomeVid(outcome.vid);
         setShowResult(true);
 
-        // Calculate winnings
-        let winnings = 0;
-        const exactMatch = allocations[outcome.label];
-        if (exactMatch) {
-            const mult = parseFloat(outcome.mult.replace('x', ''));
-            winnings += Math.round(exactMatch.reduce((a, b) => a + b, 0) * mult);
-        }
-        const sideKey = isLeg ? 'LEG SIDE' : 'OFF SIDE';
-        if (allocations[sideKey]) {
-            winnings += allocations[sideKey].reduce((a, b) => a + b, 0) * 1; // 1x side multiplier now
-        }
-
         setTimeout(() => {
             setOutcomeVid(null);
             setShowResult(false);
-            const cost = totalAllocated;
 
-            if (winnings > 0) {
-                setBoomWin(winnings);
-                setFlyWin(winnings);
-                setTimeout(() => setProfitCoins(p => p + winnings), 1200);
+            if (serverWinnings && serverWinnings > 0) {
+                setBoomWin(serverWinnings);
+                setFlyWin(serverWinnings);
+                setTimeout(() => setProfitCoins(p => p + serverWinnings), 1200);
                 setTimeout(() => setFlyWin(null), 1400);
                 setTimeout(() => setBoomWin(null), 2500);
             }
 
-            setPlayCoins(p => p - Math.min(cost, p));
-
             if (currentBall < 6) {
                 setCurrentBall(b => b + 1);
-            } else {
-                // Game Over — navigate back
-                setTimeout(() => navigate('/lobby'), 2000);
             }
 
             setAllocations({});
             setAllocHistory([]);
-            setIsAnimating(false);
+            // Don't set isAnimating(false) here, wait for next PLACE_BET state
         }, 3500);
-    }, [allocations, totalAllocated, isAnimating, currentBall, navigate]);
-
-    // Timer countdown
-    useEffect(() => {
-        setTimeLeft(15);
-        timerRef.current = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    clearInterval(timerRef.current);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-        return () => clearInterval(timerRef.current);
     }, [currentBall]);
 
-    // Auto-lock when timer runs out
-    useEffect(() => {
-        if (timeLeft === 0 && totalAllocated > 0 && !isAnimating) {
-            triggerLock();
-        }
-    }, [timeLeft, totalAllocated, isAnimating, triggerLock]);
-
     const addCoin = (label) => {
-        if (totalAllocated + activeDenom > totalCoins || isAnimating) return;
+        // Only allow betting during PLACE_BET state
+        if (gameState !== 'PLACE_BET' || totalAllocated + activeDenom > totalCoins || isAnimating) return;
         setAllocations(prev => ({
             ...prev,
             [label]: [...(prev[label] || []), activeDenom],
@@ -131,7 +198,7 @@ const GameplayScreen = () => {
     };
 
     const undoLast = () => {
-        if (allocHistory.length === 0) return;
+        if (gameState !== 'PLACE_BET' || allocHistory.length === 0) return;
         const lastLabel = allocHistory[allocHistory.length - 1];
         setAllocHistory(prev => prev.slice(0, -1));
         setAllocations(prev => {
@@ -142,6 +209,7 @@ const GameplayScreen = () => {
     };
 
     const resetAll = () => {
+        if (gameState !== 'PLACE_BET') return;
         setAllocations({});
         setAllocHistory([]);
     };
@@ -159,7 +227,7 @@ const GameplayScreen = () => {
                 </button>
 
                 <div className="game__score glass">
-                    <span className="game__score-runs">{runs}/{wickets}</span>
+                    <span className="game__score-runs">{scoreStr}</span>
                     <span className="game__score-overs">({Math.floor(ballsBowled / 6)}.{ballsBowled % 6})</span>
                 </div>
 
@@ -211,7 +279,7 @@ const GameplayScreen = () => {
             <div className="game__info-bar">
                 <div>
                     <div className="game__info-label">SUPER OVER LOBBY</div>
-                    <div className="game__info-match">BUMRAH vs KOHLI</div>
+                    <div className="game__info-match">{bowler} vs {batsman}</div>
                 </div>
                 <div className="game__info-right">
                     <div className={`game__timer glass ${timeLeft <= 3 ? 'game__timer--danger' : ''}`}>
@@ -315,6 +383,19 @@ const GameplayScreen = () => {
                     <div className="game__boom-card">
                         <div className="game__boom-text">YOU WON</div>
                         <div className="game__boom-amount">+{boomWin} COINS</div>
+                    </div>
+                </div>
+            )}
+
+            {/* BREAK / AD OVERLAY */}
+            {gameState === 'BREAK' && (
+                <div className="game__break-overlay">
+                    <div className="game__break-content glass">
+                        <h2>OVER BREAK</h2>
+                        <p>Match will resume shortly</p>
+                        <div className="game__break-ad-placeholder">
+                            <span>Ad Placement Area</span>
+                        </div>
                     </div>
                 </div>
             )}
