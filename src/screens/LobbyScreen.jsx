@@ -20,20 +20,20 @@ const LobbyScreen = () => {
             try {
                 // Assuming backend route is /matches as seen in cmd/server/main.go
                 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-                const response = await fetch(`${apiUrl}/api/matches`); 
+                const response = await fetch(`${apiUrl}/api/matches`);
                 if (!response.ok) throw new Error('Failed to fetch matches');
                 const data = await response.json();
-                
+
                 // Map the backend FIXTURE schema to the UI requirements
                 // schema: { team1, team2, datetime, league }
                 const mappedMatches = data.map(fixture => ({
-                    t1: fixture.team1.substring(0, 3).toUpperCase(), // Short code
-                    n1: fixture.team1,
-                    t2: fixture.team2.substring(0, 3).toUpperCase(), // Short code
-                    n2: fixture.team2,
-                    info: fixture.league, // Show league in info section
-                    time: formatMatchTime(fixture.datetime),
-                    hot: isMatchLive(fixture.datetime), // Simple logic to decide if hot/live
+                    t1: fixture.team_a.substring(0, 3).toUpperCase(), // Short code
+                    n1: fixture.team_a,
+                    t2: fixture.team_b.substring(0, 3).toUpperCase(), // Short code
+                    n2: fixture.team_b,
+                    info: fixture.status, // Show status in info section
+                    time: fixture.status === 'live' ? 'LIVE' : formatMatchTime(fixture.start_time),
+                    hot: fixture.status === 'live',
                     raw: fixture // keep raw data for passing to next screen
                 }));
                 setMatches(mappedMatches);
@@ -41,7 +41,7 @@ const LobbyScreen = () => {
                 console.error("Error fetching fixtures:", err);
                 setError(err.message);
                 // Fallback to empty list or mock data on error if preferred
-                setMatches([]); 
+                setMatches([]);
             } finally {
                 setLoading(false);
             }
@@ -58,7 +58,7 @@ const LobbyScreen = () => {
 
         if (diffMs <= 0 && diffMs > -4 * 60 * 60 * 1000) return 'LIVE'; // Assume live if started in last 4 hours
         if (diffMs < 0) return 'FINISHED';
-        
+
         const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
         const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
         return `${String(diffHrs).padStart(2, '0')}h ${String(diffMins).padStart(2, '0')}m`;
@@ -139,7 +139,7 @@ const LobbyScreen = () => {
                         ) : error || matches.length === 0 ? (
                             <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>
                                 {error ? `Error: ${error}` : 'No live matches found.'}
-                                <br/>
+                                <br />
                                 <small>Ensure backend is running at http://localhost:8080</small>
                             </div>
                         ) : (

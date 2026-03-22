@@ -51,7 +51,7 @@ const GameplayScreen = () => {
         // In a real app, you would pass the matchId and token in the URL or headers
         // e.g. wss://6balls.live/ws/game?matchId=123&token=...
         const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080';
-        ws.current = new WebSocket(`${wsUrl}/ws/game`); // Adjust URL as needed
+        ws.current = new WebSocket(`${wsUrl}/api/ws`); // Adjust URL as needed
 
         ws.current.onopen = () => {
             console.log("Connected to Game Server");
