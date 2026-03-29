@@ -20,21 +20,23 @@ const LobbyScreen = () => {
             try {
                 // Assuming backend route is /matches as seen in cmd/server/main.go
                 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-                const response = await fetch(`${apiUrl}/api/matches`);
-                if (!response.ok) throw new Error('Failed to fetch matches');
+                console.log(`[Lobby] Fetching matches from: ${apiUrl}/api/matches`);
+                const response = await fetch(`${apiUrl}/api/matches`, { credentials: 'include' });
+                if (!response.ok) throw new Error(`Failed to fetch matches: ${response.status} ${response.statusText}`);
                 const data = await response.json();
+                console.log("[Lobby] Matches data received:", data);
 
                 // Map the backend FIXTURE schema to the UI requirements
                 // schema: { team1, team2, datetime, league }
-                const mappedMatches = data.map(fixture => ({
-                    t1: fixture.team_a.substring(0, 3).toUpperCase(), // Short code
-                    n1: fixture.team_a,
-                    t2: fixture.team_b.substring(0, 3).toUpperCase(), // Short code
-                    n2: fixture.team_b,
-                    info: fixture.status, // Show status in info section
-                    time: fixture.status === 'live' ? 'LIVE' : formatMatchTime(fixture.start_time),
-                    hot: fixture.status === 'live',
-                    raw: fixture // keep raw data for passing to next screen
+                const mappedMatches = (data.matches || []).map(match => ({
+                    t1: match.team_a.substring(0, 3).toUpperCase(), // Short code
+                    n1: match.team_a,
+                    t2: match.team_b.substring(0, 3).toUpperCase(), // Short code
+                    n2: match.team_b,
+                    info: match.status, // Show status in info section
+                    time: match.status === 'live' ? 'LIVE' : formatMatchTime(match.start_time),
+                    hot: match.status === 'live',
+                    raw: match // keep raw data for passing to next screen
                 }));
                 setMatches(mappedMatches);
             } catch (err) {
@@ -145,7 +147,7 @@ const LobbyScreen = () => {
                         ) : (
                             <div className="lobby__cards">
                                 {matches.map((m, i) => (
-                                    <div key={i} className={`mcard ${m.hot ? 'mcard--hot' : ''}`} onClick={() => navigate('/match-stats')}>
+                                    <div key={i} className={`mcard ${m.hot ? 'mcard--hot' : ''}`} onClick={() => navigate('/play', { state: { matchId: m.raw.id } })}>
                                         <div className="mcard__top">
                                             <span className="mcard__info">{m.info}</span>
                                             {m.time === 'LIVE' && <span className="mcard__live">LIVE</span>}

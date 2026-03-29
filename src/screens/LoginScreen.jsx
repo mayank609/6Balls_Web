@@ -6,7 +6,6 @@ import './LoginScreen.css';
 
 const LoginScreen = () => {
     const navigate = useNavigate();
-    const [phone, setPhone] = useState('');
 
     const handleGoogleLogin = () => {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -37,35 +36,18 @@ const LoginScreen = () => {
                 <div className="login__spacer" />
 
                 <div className="login__card glass">
-                    <div className="login__input-row glass">
-                        <span className="login__flag">🇮🇳</span>
-                        <input
-                            type="tel"
-                            placeholder="Enter Mobile Number"
-                            value={phone}
-                            onChange={e => setPhone(e.target.value)}
-                            className="login__input"
-                        />
-                    </div>
-
                     <button
-                        className="login__submit-btn"
-                        onClick={() => navigate('/otp', { state: { phone } })}
+                        className="login__google-btn glass"
+                        onClick={handleGoogleLogin}
                     >
-                        Send OTP
+                        <img 
+                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" 
+                            alt="Google" 
+                            className="login__google-icon"
+                        />
+                        <span>Continue with Google</span>
                     </button>
-
-                    <div className="login__divider">
-                        <span className="login__line" />
-                        <span className="login__or">OR</span>
-                        <span className="login__line" />
-                    </div>
-
-                    <div className="login__social-row">
-                        <button className="login__social-btn glass" onClick={handleGoogleLogin}>G</button>
-                        <button className="login__social-btn glass">f</button>
-                        <button className="login__social-btn glass">🍎</button>
-                    </div>
+                    <p className="login__terms">By continuing, you agree to our Terms of Service and Privacy Policy</p>
                 </div>
             </div>
         </div>

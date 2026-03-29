@@ -192,18 +192,6 @@
     font-weight: 900;
 }
 
-.game__timer {
-    padding: 4px 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.game__timer--danger {
-    color: var(--color-danger);
-    border-color: var(--color-danger);
-}
-
 .game__prediction-label {
     display: inline-block;
     margin: 4px auto;
@@ -378,6 +366,36 @@
     color: var(--color-danger);
 }
 
+.game__pouch-submit-full {
+    width: 100%;
+    margin-top: 12px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 14px;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 1px;
+    transition: all 0.3s;
+}
+
+.game__pouch-submit-full--active {
+    background: var(--color-primary);
+    color: #000;
+    border-color: var(--color-primary);
+    box-shadow: 0 8px 30px rgba(255, 107, 0, 0.4);
+}
+
+.game__pouch-submit-full:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.game__pouch-submit-full:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
 .game__denoms {
     display: flex;
     gap: 8px;
@@ -541,6 +559,92 @@
     text-transform: uppercase;
     letter-spacing: 1px;
 }
+
+/* ════ ADMIN PANEL ════ */
+.game__admin-toggle {
+    position: fixed;
+    right: 16px;
+    bottom: 200px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    z-index: 2000;
+}
+
+.game__admin-panel {
+    position: fixed;
+    bottom: 250px;
+    right: 16px;
+    width: 280px;
+    background: rgba(0, 0, 0, 0.9);
+    border-radius: 16px;
+    padding: 16px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+
+.admin-header {
+    font-size: 14px;
+    font-weight: 900;
+    color: var(--color-primary);
+    text-align: center;
+}
+
+.admin-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.admin-section label {
+    font-size: 10px;
+    font-weight: 700;
+    opacity: 0.6;
+}
+
+.admin-section input, 
+.admin-section select {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    padding: 8px;
+    font-size: 12px;
+}
+
+.admin-row {
+    display: flex;
+    gap: 8px;
+}
+
+.admin-row input, 
+.admin-row select {
+    flex: 1;
+}
+
+.admin-btn {
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 900;
+    border: none;
+    cursor: pointer;
+}
+
+.admin-btn--green { background: #10B981; color: white; }
+.admin-btn--yellow { background: #FBBF24; color: black; }
+.admin-btn--orange { background: #F59E0B; color: white; }
+.admin-btn--red { background: #EF4444; color: white; }
 
 @keyframes popIn {
     from {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import './GameplayScreen.css';
 
@@ -16,13 +16,14 @@ const DENOMINATIONS = [5, 10, 25, 50];
 
 const GameplayScreen = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const matchId = location.state?.matchId || 'default';
     const [playCoins, setPlayCoins] = useState(200);
     const [profitCoins, setProfitCoins] = useState(0);
     const [currentBall, setCurrentBall] = useState(1);
     const [runs, setRuns] = useState(0);
     const [wickets, setWickets] = useState(0);
     const [ballsBowled, setBallsBowled] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(0); // Driven by server now
     const [activeDenom, setActiveDenom] = useState(5);
     const [allocations, setAllocations] = useState({});
     const [allocHistory, setAllocHistory] = useState([]);
@@ -32,9 +33,11 @@ const GameplayScreen = () => {
     const [outcomeVid, setOutcomeVid] = useState(null);
     const [boomWin, setBoomWin] = useState(null);
     const [flyWin, setFlyWin] = useState(null);
-    const [gameState, setGameState] = useState('LOCKED'); // 'PLACE_BET', 'LOCKED', 'RESULT'
+    const [gameState, setGameState] = useState('LOCKED'); // 'PLACEBET', 'LOCKED', 'RESULT'
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [showAdmin, setShowAdmin] = useState(false);
+    const [adminInput, setAdminInput] = useState({ outcome: 'SINGLE', multiplier: 1 });
     const videoRef = useRef(null);
-    const timerRef = useRef(null);
     const ws = useRef(null);
 
     const totalCoins = playCoins + profitCoins;
@@ -50,80 +53,96 @@ const GameplayScreen = () => {
     useEffect(() => {
         // In a real app, you would pass the matchId and token in the URL or headers
         // e.g. wss://6balls.live/ws/game?matchId=123&token=...
+        const fetchInitialState = async () => {
+            try {
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+                // Trying a more standard route based on common backend patterns
+                const response = await fetch(`${apiUrl}/api/admin/live-state?matchId=${matchId}`, { credentials: 'include' });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.ball) setCurrentBall(parseInt(data.ball) || 1);
+                    if (data.score) setScoreStr(data.score);
+                    if (data.batsman) setBatsman(data.batsman);
+                    if (data.bowler) setBowler(data.bowler);
+                    console.log("[WS] Initial state loaded:", data);
+                } else if (response.status === 404) {
+                     console.warn(`[WS] Live state not found at /api/admin/live-state for ${matchId}. Ensure the match is initialized.`);
+                }
+            } catch (err) {
+                console.error("[WS] Error fetching initial state:", err);
+            }
+        };
+
+        fetchInitialState();
+
         const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080';
-        ws.current = new WebSocket(`${wsUrl}/api/ws`); // Adjust URL as needed
+        const fullWsUrl = `${wsUrl}/api/ws?matchId=${matchId}`;
+        console.log(`[WS] Initializing connection to: ${fullWsUrl}`);
+        ws.current = new WebSocket(fullWsUrl); // Adjust URL as needed
 
         ws.current.onopen = () => {
-            console.log("Connected to Game Server");
+            console.log("[WS] Connection established successfully");
+        };
+
+        ws.current.onerror = (error) => {
+            console.error("[WS] WebSocket Error observed:", error);
         };
 
         ws.current.onmessage = (event) => {
             const message = JSON.parse(event.data);
+            console.log(`[WS] Received message of type: ${message.type}`, message);
             
-            if (message.TYPE === "PLACE_BET") {
-                setGameState("PLACE_BET");
+            if (message.type === "PLACEBET") {
+                setGameState("PLACEBET");
+                setIsSubmitted(false);
                 setIsAnimating(false);
                 setAllocations({});
                 setAllocHistory([]);
                 
                 // Update match data from server payload
-                if (message.DATA) {
-                    if (message.DATA.ball) setCurrentBall(parseInt(message.DATA.ball) || 1);
-                    if (message.DATA.score) setScoreStr(message.DATA.score);
-                    if (message.DATA.batsman) setBatsman(message.DATA.batsman);
-                    if (message.DATA.bowler) setBowler(message.DATA.bowler);
+                if (message.data) {
+                    // Mapping fields from state object broadcasted by HandleStartBetting
+                    const ballNum = parseInt(message.data.ball) || 1;
+                    setCurrentBall(ballNum);
+                    setScoreStr(message.data.score || "0/0");
+                    setBatsman(message.data.batsman || "---");
+                    setBowler(message.data.bowler || "---");
                     
                     // Sync balances with server source of truth
-                    if (message.DATA.playCoins !== undefined) setPlayCoins(Number(message.DATA.playCoins));
-                    if (message.DATA.profitCoins !== undefined) setProfitCoins(Number(message.DATA.profitCoins));
-                }
-
-                // Optionally start a local countdown if server sends duration
-                if (message.duration) {
-                    setTimeLeft(message.duration);
-                    if (timerRef.current) clearInterval(timerRef.current);
-                    timerRef.current = setInterval(() => {
-                        setTimeLeft(prev => Math.max(0, prev - 1));
-                    }, 1000);
+                    if (message.data.playCoins !== undefined) setPlayCoins(Number(message.data.playCoins));
+                    if (message.data.profitCoins !== undefined) setProfitCoins(Number(message.data.profitCoins));
                 }
             } 
-            else if (message.TYPE === "LOCKED") {
+            else if (message.type === "LOCKED") {
                 setGameState("LOCKED");
-                if (timerRef.current) clearInterval(timerRef.current);
-                setTimeLeft(0);
-                
-                // When locked, send bets to server
-                submitBetsToServer();
+                // Removed auto-submission as per backend requirements
             } 
-            else if (message.TYPE === "RESULT") {
+            else if (message.type === "RESULT") {
                 setGameState("RESULT");
-                // Fallback to empty object if DATA is undefined
-                const resultData = message.DATA || {}; 
+                // Fallback to empty object if data is undefined
+                const resultData = message.data || {}; 
                 handleServerResult(resultData.outcome, resultData.isLeg, resultData.winnings);
             }
-            else if (message.TYPE === "BREAK") {
+            else if (message.type === "BREAK") {
                 setGameState("BREAK");
-                if (timerRef.current) clearInterval(timerRef.current);
-                setTimeLeft(0);
                 setIsAnimating(false);
             }
         };
 
-        ws.current.onclose = () => {
-            console.log("Disconnected from Game Server");
+        ws.current.onclose = (event) => {
+            console.log(`[WS] Disconnected from Game Server (Code: ${event.code}, Reason: ${event.reason || 'none'})`);
         };
 
         return () => {
             if (ws.current) {
                 ws.current.close();
             }
-            if (timerRef.current) clearInterval(timerRef.current);
         };
     }, []);
 
     const submitBetsToServer = useCallback(() => {
-        if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
-
+        if (!ws.current || ws.current.readyState !== WebSocket.OPEN || isSubmitted) return;
+        
         // Convert allocations { "SIX": [10, 5], "OFF SIDE": [25] } to required array format
         const bets = [];
         Object.entries(allocations).forEach(([selection, amounts]) => {
@@ -136,15 +155,19 @@ const GameplayScreen = () => {
         if (bets.length > 0) {
              const payload = {
                 type: "SUBMIT_BET",
+                match_id: matchId,
+                room_id: `room_${matchId}_global`,
                 bets: bets
              };
+             console.log("[WS] Sending Payload:", payload);
              ws.current.send(JSON.stringify(payload));
              
              // Deduct play coins immediately on submission
              setPlayCoins(p => Math.max(0, p - totalAllocated));
+             setIsSubmitted(true);
              console.log("Bets submitted:", payload);
         }
-    }, [allocations, totalAllocated]);
+    }, [allocations, totalAllocated, isSubmitted]);
 
     const handleServerResult = useCallback((serverOutcome, isLeg, serverWinnings) => {
         setIsAnimating(true);
@@ -183,13 +206,13 @@ const GameplayScreen = () => {
 
             setAllocations({});
             setAllocHistory([]);
-            // Don't set isAnimating(false) here, wait for next PLACE_BET state
+            // Don't set isAnimating(false) here, wait for next PLACEBET state
         }, 3500);
     }, [currentBall]);
 
     const addCoin = (label) => {
-        // Only allow betting during PLACE_BET state
-        if (gameState !== 'PLACE_BET' || totalAllocated + activeDenom > totalCoins || isAnimating) return;
+        // Only allow betting during PLACEBET state
+        if (gameState !== 'PLACEBET' || isSubmitted || totalAllocated + activeDenom > totalCoins || isAnimating) return;
         setAllocations(prev => ({
             ...prev,
             [label]: [...(prev[label] || []), activeDenom],
@@ -198,7 +221,7 @@ const GameplayScreen = () => {
     };
 
     const undoLast = () => {
-        if (gameState !== 'PLACE_BET' || allocHistory.length === 0) return;
+        if (gameState !== 'PLACEBET' || isSubmitted || allocHistory.length === 0) return;
         const lastLabel = allocHistory[allocHistory.length - 1];
         setAllocHistory(prev => prev.slice(0, -1));
         setAllocations(prev => {
@@ -209,12 +232,10 @@ const GameplayScreen = () => {
     };
 
     const resetAll = () => {
-        if (gameState !== 'PLACE_BET') return;
+        if (gameState !== 'PLACEBET' || isSubmitted) return;
         setAllocations({});
         setAllocHistory([]);
     };
-
-    const timerStr = `${String(Math.floor(timeLeft / 60)).padStart(2, '0')}:${String(timeLeft % 60).padStart(2, '0')}`;
 
     return (
         <div className="game">
@@ -281,11 +302,6 @@ const GameplayScreen = () => {
                     <div className="game__info-label">SUPER OVER LOBBY</div>
                     <div className="game__info-match">{bowler} vs {batsman}</div>
                 </div>
-                <div className="game__info-right">
-                    <div className={`game__timer glass ${timeLeft <= 3 ? 'game__timer--danger' : ''}`}>
-                        {timerStr}
-                    </div>
-                </div>
             </div>
 
             <div className="game__prediction-label glass">
@@ -320,25 +336,7 @@ const GameplayScreen = () => {
                 })}
             </div>
 
-            {/* SIDE CARDS */}
-            <div className="game__sides">
-                {['OFF SIDE', 'LEG SIDE'].map(side => {
-                    const coins = allocations[side] || [];
-                    const total = coins.reduce((a, b) => a + b, 0);
-                    return (
-                        <button
-                            key={side}
-                            className="game__side-card glass"
-                            onClick={() => addCoin(side)}
-                            disabled={isAnimating}
-                        >
-                            <span>{side}</span>
-                            <span className="game__side-mult">1x</span>
-                            {total > 0 && <div className="game__side-coins">{total}</div>}
-                        </button>
-                    );
-                })}
-            </div>
+
 
             {/* COIN SELECTOR */}
             <div className="game__pouch">
@@ -351,10 +349,10 @@ const GameplayScreen = () => {
                 <div className="game__pouch-controls">
                     <span className="game__pouch-label">SELECT VALUE</span>
                     <div className="game__pouch-actions">
-                        <button className="game__pouch-undo" onClick={undoLast} disabled={allocHistory.length === 0}>
+                        <button className="game__pouch-undo" onClick={undoLast} disabled={allocHistory.length === 0 || isSubmitted}>
                             <RotateCcw size={12} /> UNDO
                         </button>
-                        <button className="game__pouch-reset" onClick={resetAll}>RESET ALL</button>
+                        <button className="game__pouch-reset" onClick={resetAll} disabled={isSubmitted}>RESET ALL</button>
                     </div>
                 </div>
 
@@ -370,7 +368,54 @@ const GameplayScreen = () => {
                     ))}
                 </div>
 
+                <button 
+                    className={`game__pouch-submit-full ${totalAllocated > 0 && !isSubmitted ? 'game__pouch-submit-full--active' : ''}`} 
+                    onClick={submitBetsToServer} 
+                    disabled={totalAllocated === 0 || isSubmitted || gameState !== 'PLACEBET'}
+                >
+                    {isSubmitted ? 'BETS SUBMITTED' : 'CONFIRM & SUBMIT BETS'}
+                </button>
+
             </div>
+
+            {/* ADMIN TOGGLE */}
+            <button className="game__admin-toggle" onClick={() => setShowAdmin(!showAdmin)}>🛠️</button>
+
+            {/* ADMIN PANEL */}
+            {showAdmin && (
+                <div className="game__admin-panel glass">
+                    <div className="admin-header">ADMIN CONTROLS</div>
+                    
+                    <div className="admin-section">
+                        <label>MATCH DATA (SCORE/BALL/PLAYERS)</label>
+                        <input type="text" value={scoreStr} onChange={e => setScoreStr(e.target.value)} placeholder="Score (e.g. 54-2)" />
+                        <div className="admin-row">
+                            <input type="text" value={batsman} onChange={e => setBatsman(e.target.value)} placeholder="Batsman" />
+                            <input type="text" value={bowler} onChange={e => setBowler(e.target.value)} placeholder="Bowler" />
+                        </div>
+                        <button className="admin-btn admin-btn--green" onClick={adminStartBetting}>🚀 START BETTING</button>
+                    </div>
+
+                    <div className="admin-section">
+                        <button className="admin-btn admin-btn--yellow" onClick={adminLockBall}>🔒 LOCK BALL</button>
+                    </div>
+
+                    <div className="admin-section">
+                        <label>BALL RESULT</label>
+                        <div className="admin-row">
+                            <select value={adminInput.outcome} onChange={e => setAdminInput({...adminInput, outcome: e.target.value})}>
+                                {PREDICTION_OPTIONS.map(opt => <option key={opt.label} value={opt.label}>{opt.label}</option>)}
+                            </select>
+                            <input type="number" step="0.1" value={adminInput.multiplier} onChange={e => setAdminInput({...adminInput, multiplier: e.target.value})} />
+                        </div>
+                        <button className="admin-btn admin-btn--orange" onClick={adminSetResult}>🎁 SET RESULT & PAYOUT</button>
+                    </div>
+
+                    <div className="admin-section">
+                        <button className="admin-btn admin-btn--red" onClick={adminOverBreak}>⏱️ OVER BREAK</button>
+                    </div>
+                </div>
+            )}
 
             {flyWin !== null && (
                 <div className="game__fly-coin">+{flyWin}</div>
