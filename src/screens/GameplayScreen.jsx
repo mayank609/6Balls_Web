@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, RotateCcw } from 'lucide-react';
+import { ArrowLeft, RotateCcw, Coins, Gem, Send, CheckCircle2 } from 'lucide-react';
+import LeaderboardOverlay from '../components/LeaderboardOverlay';
 import './GameplayScreen.css';
 
 const PREDICTION_OPTIONS = [
@@ -35,6 +36,7 @@ const GameplayScreen = () => {
     const [flyWin, setFlyWin] = useState(null);
     const [gameState, setGameState] = useState('LOCKED'); // 'PLACEBET', 'LOCKED', 'RESULT'
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [notification, setNotification] = useState({ msg: '', visible: false, color: '#FF6B00' });
     const [showAdmin, setShowAdmin] = useState(false);
     const [adminInput, setAdminInput] = useState({ outcome: 'SINGLE', multiplier: 1 });
     const videoRef = useRef(null);
@@ -60,13 +62,16 @@ const GameplayScreen = () => {
                 const response = await fetch(`${apiUrl}/api/admin/live-state?matchId=${matchId}`, { credentials: 'include' });
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.ball) setCurrentBall(parseInt(data.ball) || 1);
+                    const ballStr = String(data.ball || "0.1");
+                    const [overs, ballInOver] = ballStr.includes('.') ? ballStr.split('.').map(Number) : [0, Number(ballStr)];
+                    setCurrentBall(ballInOver || 1);
+                    setBallsBowled((overs * 6) + ballInOver);
                     if (data.score) setScoreStr(data.score);
                     if (data.batsman) setBatsman(data.batsman);
                     if (data.bowler) setBowler(data.bowler);
                     console.log("[WS] Initial state loaded:", data);
                 } else if (response.status === 404) {
-                     console.warn(`[WS] Live state not found at /api/admin/live-state for ${matchId}. Ensure the match is initialized.`);
+                    console.warn(`[WS] Live state not found at /api/admin/live-state for ${matchId}. Ensure the match is initialized.`);
                 }
             } catch (err) {
                 console.error("[WS] Error fetching initial state:", err);
@@ -91,37 +96,59 @@ const GameplayScreen = () => {
         ws.current.onmessage = (event) => {
             const message = JSON.parse(event.data);
             console.log(`[WS] Received message of type: ${message.type}`, message);
-            
+
             if (message.type === "PLACEBET") {
                 setGameState("PLACEBET");
                 setIsSubmitted(false);
                 setIsAnimating(false);
                 setAllocations({});
                 setAllocHistory([]);
-                
+                setNotification({
+                    msg: '🎯 PREDICTION OPEN! MAKE YOUR PICKS',
+                    visible: true,
+                    color: 'var(--color-primary)',
+                    type: 'open'
+                });
+                setTimeout(() => setNotification(prev => ({ ...prev, visible: false })), 2000);
+
                 // Update match data from server payload
                 if (message.data) {
-                    // Mapping fields from state object broadcasted by HandleStartBetting
-                    const ballNum = parseInt(message.data.ball) || 1;
-                    setCurrentBall(ballNum);
+                    // Mapping fields (e.g., "0.3" -> ball 3 of current over)
+                    const ballStr = String(message.data.ball || "0.1");
+                    const [overs, ballInOver] = ballStr.includes('.') ? ballStr.split('.').map(Number) : [0, Number(ballStr)];
+                    setCurrentBall(ballInOver || 1);
+                    setBallsBowled((overs * 6) + ballInOver);
                     setScoreStr(message.data.score || "0/0");
                     setBatsman(message.data.batsman || "---");
                     setBowler(message.data.bowler || "---");
-                    
+
                     // Sync balances with server source of truth
                     if (message.data.playCoins !== undefined) setPlayCoins(Number(message.data.playCoins));
                     if (message.data.profitCoins !== undefined) setProfitCoins(Number(message.data.profitCoins));
                 }
-            } 
+            }
             else if (message.type === "LOCKED") {
                 setGameState("LOCKED");
+                setNotification({
+                    msg: '🔒 SELECTION LOCKED! GOOD LUCK',
+                    visible: true,
+                    color: '#EF4444',
+                    type: 'locked'
+                });
+                setTimeout(() => setNotification(prev => ({ ...prev, visible: false })), 2000);
                 // Removed auto-submission as per backend requirements
-            } 
+            }
             else if (message.type === "RESULT") {
                 setGameState("RESULT");
-                // Fallback to empty object if data is undefined
-                const resultData = message.data || {}; 
-                handleServerResult(resultData.outcome, resultData.isLeg, resultData.winnings);
+                // In some cases, result fields are flat; in others, they are inside message.data
+                const outcome = message.outcome || (message.data && message.data.outcome);
+                const isLeg = message.isLeg !== undefined ? message.isLeg : (message.data && message.data.isLeg);
+                const winnings = message.winnings !== undefined ? message.winnings : (message.data && message.data.winnings);
+                
+                console.log(`[WS] RESULT Message -> Parsed Outcome: ${outcome}, isLeg: ${isLeg}, Wins: ${winnings}`);
+
+                const normalizedOutcome = normalizeResult(outcome);
+                handleServerResult(normalizedOutcome, isLeg, winnings);
             }
             else if (message.type === "BREAK") {
                 setGameState("BREAK");
@@ -142,7 +169,7 @@ const GameplayScreen = () => {
 
     const submitBetsToServer = useCallback(() => {
         if (!ws.current || ws.current.readyState !== WebSocket.OPEN || isSubmitted) return;
-        
+
         // Convert allocations { "SIX": [10, 5], "OFF SIDE": [25] } to required array format
         const bets = [];
         Object.entries(allocations).forEach(([selection, amounts]) => {
@@ -153,31 +180,58 @@ const GameplayScreen = () => {
         });
 
         if (bets.length > 0) {
-             const payload = {
+            const payload = {
                 type: "SUBMIT_BET",
                 match_id: matchId,
                 room_id: `room_${matchId}_global`,
                 bets: bets
-             };
-             console.log("[WS] Sending Payload:", payload);
-             ws.current.send(JSON.stringify(payload));
-             
-             // Deduct play coins immediately on submission
-             setPlayCoins(p => Math.max(0, p - totalAllocated));
-             setIsSubmitted(true);
-             console.log("Bets submitted:", payload);
+            };
+            console.log("[WS] Sending Payload:", payload);
+            ws.current.send(JSON.stringify(payload));
+
+            // Deduct play coins immediately on submission
+            setPlayCoins(p => Math.max(0, p - totalAllocated));
+            setIsSubmitted(true);
+            console.log("Bets submitted:", payload);
         }
     }, [allocations, totalAllocated, isSubmitted]);
 
+    const normalizeResult = (val) => {
+        if (val === undefined || val === null) return 'DOT';
+        const s = String(val).trim().toUpperCase();
+        console.log(`[WS] Normalizing Result Value: "${val}" -> "${s}"`);
+
+        if (s === '0' || s === 'DOT' || s === '0.0') return 'DOT';
+        if (s === '1' || s === 'SINGLE' || s === 'ONE') return 'SINGLE';
+        if (s === '2' || s === 'DOUBLE' || s === 'TWO') return 'DOUBLE';
+        if (s === '4' || s === 'FOUR') return 'FOUR';
+        if (s === '6' || s === 'SIX' || s === '6.0') return 'SIX';
+        if (s === 'WICKET' || s === 'W' || s === 'OUT') return 'WICKET';
+
+        // If it's already a valid label, return it
+        const validLabels = PREDICTION_OPTIONS.map(o => o.label);
+        if (validLabels.includes(s)) return s;
+
+        console.warn(`[WS] Unknown result value received: "${val}". Defaulting to DOT.`);
+        return 'DOT';
+    };
+
     const handleServerResult = useCallback((serverOutcome, isLeg, serverWinnings) => {
         setIsAnimating(true);
+        console.log(`[WS] handleServerResult -> Outcome: ${serverOutcome}, Leg: ${isLeg}, Wins: ${serverWinnings}`);
 
-        // Find matching option for video/colors
-        const outcome = PREDICTION_OPTIONS.find(opt => opt.label === serverOutcome) || PREDICTION_OPTIONS[0];
+        // Find matching option for video/colors (serverOutcome is already normalized)
+        const outcome = PREDICTION_OPTIONS.find(opt =>
+            opt.label.toUpperCase() === String(serverOutcome).toUpperCase()
+        ) || PREDICTION_OPTIONS[0];
+
+        console.log(`[WS] Selected Animation: ${outcome.label} (${outcome.vid})`);
 
         const outcomeRuns = { SINGLE: 1, DOUBLE: 2, FOUR: 4, SIX: 6 }[outcome.label] || 0;
         setRuns(r => r + outcomeRuns);
         if (outcome.label === 'WICKET') setWickets(w => w + 1);
+
+        // Increment ballsBowled locally for optimistic UI if needed
         setBallsBowled(b => b + 1);
 
         const sideLabel = isLeg ? 'LEG' : 'OFF';
@@ -187,6 +241,12 @@ const GameplayScreen = () => {
         setResultText(bannerText);
         setOutcomeVid(outcome.vid);
         setShowResult(true);
+
+        // Ensure video is played from the start
+        if (videoRef.current) {
+            videoRef.current.currentTime = 0;
+            videoRef.current.play().catch(e => console.warn("Video play failed:", e));
+        }
 
         setTimeout(() => {
             setOutcomeVid(null);
@@ -237,6 +297,46 @@ const GameplayScreen = () => {
         setAllocHistory([]);
     };
 
+    // --- Admin Control Functions ---
+    const adminStartBetting = () => {
+        if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+        ws.current.send(JSON.stringify({
+            type: "ADMIN_COMMAND",
+            command: "START_BETTING",
+            matchId: matchId,
+            data: { batsman, bowler, score: scoreStr, ball: `0.${currentBall}` }
+        }));
+    };
+
+    const adminLockBall = () => {
+        if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+        ws.current.send(JSON.stringify({
+            type: "ADMIN_COMMAND",
+            command: "LOCK_BALL",
+            matchId: matchId
+        }));
+    };
+
+    const adminSetResult = () => {
+        if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+        ws.current.send(JSON.stringify({
+            type: "ADMIN_COMMAND",
+            command: "SET_RESULT",
+            matchId: matchId,
+            data: { outcome: adminInput.outcome, multiplier: Number(adminInput.multiplier), isLeg: false }
+        }));
+    };
+
+    const adminOverBreak = () => {
+        setGameState("BREAK"); // Local simulation
+        if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+        ws.current.send(JSON.stringify({
+            type: "ADMIN_COMMAND",
+            command: "OVER_BREAK",
+            matchId: matchId
+        }));
+    };
+
     return (
         <div className="game">
             <div className="game__bg" />
@@ -253,8 +353,8 @@ const GameplayScreen = () => {
                 </div>
 
                 <div className="game__wallets">
-                    <div className="game__wallet glass">🎮 {playCoins}</div>
-                    <div className="game__wallet game__wallet--gold glass">💰 {profitCoins}</div>
+                    <div className="game__wallet glass"><Coins size={14} color="#FFD700" style={{ verticalAlign: 'middle', marginRight: '4px' }} /> {playCoins}</div>
+                    <div className="game__wallet game__wallet--gold glass"><Gem size={14} color="#00F0FF" style={{ verticalAlign: 'middle', marginRight: '4px' }} /> {profitCoins}</div>
                 </div>
             </header>
 
@@ -263,9 +363,12 @@ const GameplayScreen = () => {
                 <div className="game__player-placeholder">
                     {outcomeVid ? (
                         <video
+                            key={outcomeVid}
                             ref={videoRef}
                             src={outcomeVid}
                             autoPlay
+                            muted
+                            playsInline
                             className="game__outcome-video"
                             onEnded={() => setShowResult(false)}
                         />
@@ -305,7 +408,10 @@ const GameplayScreen = () => {
             </div>
 
             <div className="game__prediction-label glass">
-                BALL {currentBall} PREDICTION
+                BALL {currentBall} {gameState === 'PLACEBET' ? 'PREDICTION' : 'RESULT'}
+                <div className={`game__state-badge game__state-badge--${gameState.toLowerCase()}`}>
+                    {gameState === 'PLACEBET' ? '● LIVE' : gameState === 'LOCKED' ? '● LOCKED' : '● ' + gameState}
+                </div>
             </div>
 
             {/* PREDICTION GRID */}
@@ -368,12 +474,22 @@ const GameplayScreen = () => {
                     ))}
                 </div>
 
-                <button 
-                    className={`game__pouch-submit-full ${totalAllocated > 0 && !isSubmitted ? 'game__pouch-submit-full--active' : ''}`} 
-                    onClick={submitBetsToServer} 
+                <button
+                    className={`game__pouch-submit-full ${totalAllocated > 0 && !isSubmitted ? 'game__pouch-submit-full--active' : ''} ${isSubmitted ? 'game__pouch-submit-full--submitted' : ''}`}
+                    onClick={submitBetsToServer}
                     disabled={totalAllocated === 0 || isSubmitted || gameState !== 'PLACEBET'}
                 >
-                    {isSubmitted ? 'BETS SUBMITTED' : 'CONFIRM & SUBMIT BETS'}
+                    {isSubmitted ? (
+                        <>
+                            <CheckCircle2 size={18} />
+                            <span>PREDICTIONS CONFIRMED</span>
+                        </>
+                    ) : (
+                        <>
+                            <Send size={18} className={totalAllocated > 0 ? 'game__icon-pulse' : ''} />
+                            <span>CONFIRM & SUBMIT</span>
+                        </>
+                    )}
                 </button>
 
             </div>
@@ -385,7 +501,7 @@ const GameplayScreen = () => {
             {showAdmin && (
                 <div className="game__admin-panel glass">
                     <div className="admin-header">ADMIN CONTROLS</div>
-                    
+
                     <div className="admin-section">
                         <label>MATCH DATA (SCORE/BALL/PLAYERS)</label>
                         <input type="text" value={scoreStr} onChange={e => setScoreStr(e.target.value)} placeholder="Score (e.g. 54-2)" />
@@ -393,26 +509,34 @@ const GameplayScreen = () => {
                             <input type="text" value={batsman} onChange={e => setBatsman(e.target.value)} placeholder="Batsman" />
                             <input type="text" value={bowler} onChange={e => setBowler(e.target.value)} placeholder="Bowler" />
                         </div>
-                        <button className="admin-btn admin-btn--green" onClick={adminStartBetting}>🚀 START BETTING</button>
+                        <button className="admin-btn admin-btn--green" onClick={adminStartBetting}>🚀 START PREDICTION</button>
                     </div>
 
                     <div className="admin-section">
-                        <button className="admin-btn admin-btn--yellow" onClick={adminLockBall}>🔒 LOCK BALL</button>
+                        <button className="admin-btn admin-btn--yellow" onClick={adminLockBall}>🔒 LOCK SELECTION</button>
                     </div>
 
                     <div className="admin-section">
                         <label>BALL RESULT</label>
                         <div className="admin-row">
-                            <select value={adminInput.outcome} onChange={e => setAdminInput({...adminInput, outcome: e.target.value})}>
+                            <select value={adminInput.outcome} onChange={e => setAdminInput({ ...adminInput, outcome: e.target.value })}>
                                 {PREDICTION_OPTIONS.map(opt => <option key={opt.label} value={opt.label}>{opt.label}</option>)}
                             </select>
-                            <input type="number" step="0.1" value={adminInput.multiplier} onChange={e => setAdminInput({...adminInput, multiplier: e.target.value})} />
+                            <input type="number" step="0.1" value={adminInput.multiplier} onChange={e => setAdminInput({ ...adminInput, multiplier: e.target.value })} />
                         </div>
                         <button className="admin-btn admin-btn--orange" onClick={adminSetResult}>🎁 SET RESULT & PAYOUT</button>
                     </div>
 
                     <div className="admin-section">
-                        <button className="admin-btn admin-btn--red" onClick={adminOverBreak}>⏱️ OVER BREAK</button>
+                        <button className="admin-btn admin-btn--red" onClick={adminOverBreak}>🚀 OVER BREAK (LEADERBOARD)</button>
+                    </div>
+                </div>
+            )}
+
+            {notification.visible && (
+                <div className={`game__status-popup game__status-popup--${notification.type}`}>
+                    <div className="game__status-popup-content">
+                        {notification.msg}
                     </div>
                 </div>
             )}
@@ -432,15 +556,11 @@ const GameplayScreen = () => {
                 </div>
             )}
 
-            {/* BREAK / AD OVERLAY */}
+            {/* BREAK / LEADERBOARD OVERLAY */}
             {gameState === 'BREAK' && (
                 <div className="game__break-overlay">
-                    <div className="game__break-content glass">
-                        <h2>OVER BREAK</h2>
-                        <p>Match will resume shortly</p>
-                        <div className="game__break-ad-placeholder">
-                            <span>Ad Placement Area</span>
-                        </div>
+                    <div className="game__break-content glass" style={{ padding: 0, overflow: 'hidden' }}>
+                        <LeaderboardOverlay matchId={matchId} />
                     </div>
                 </div>
             )}
