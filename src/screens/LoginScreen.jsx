@@ -41,7 +41,7 @@ const LoginScreen = () => {
                         onClick={handleGoogleLogin}
                     >
                         <img 
-                            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" 
+                            src="/assets/google-icon.svg" 
                             alt="Google" 
                             className="login__google-icon"
                         />
