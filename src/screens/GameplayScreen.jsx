@@ -15,6 +15,32 @@ const PREDICTION_OPTIONS = [
 
 const DENOMINATIONS = [5, 10, 25, 50];
 
+/** Normalize server BREAK payload (flat or wrapped in PAYLOAD / data). */
+const parseBreakLeaderboardPayload = (message) => {
+    const inner = message.PAYLOAD ?? message.payload ?? message.data;
+    const hasBreakFields = (obj) =>
+        obj &&
+        typeof obj === 'object' &&
+        (Array.isArray(obj.top_3) ||
+            obj.your_rank !== undefined ||
+            obj.total_players !== undefined ||
+            obj.your_winnings !== undefined);
+    const src = hasBreakFields(inner)
+        ? inner
+        : hasBreakFields(message)
+          ? message
+          : null;
+    if (!src) return null;
+    return {
+        room_id: src.room_id,
+        match_id: src.match_id,
+        your_rank: Number(src.your_rank) || 0,
+        total_players: Number(src.total_players) || 0,
+        top_3: Array.isArray(src.top_3) ? src.top_3 : [],
+        your_winnings: Number(src.your_winnings) || 0,
+    };
+};
+
 const GameplayScreen = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -35,6 +61,7 @@ const GameplayScreen = () => {
     const [boomWin, setBoomWin] = useState(null);
     const [flyWin, setFlyWin] = useState(null);
     const [gameState, setGameState] = useState('LOCKED'); // 'PLACEBET', 'LOCKED', 'RESULT'
+    const [breakLeaderboard, setBreakLeaderboard] = useState(null);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [notification, setNotification] = useState({ msg: '', visible: false, color: '#FF6B00' });
     const [showAdmin, setShowAdmin] = useState(false);
@@ -49,36 +76,60 @@ const GameplayScreen = () => {
     const [batsman, setBatsman] = useState('KOHLI');
     const [bowler, setBowler] = useState('BUMRAH');
     const [scoreStr, setScoreStr] = useState('0/0');
+    /** From LiveMatchState.status: "live" | "upcoming" | "finished" */
+    const [matchStatus, setMatchStatus] = useState('live');
     // We already have currentBall state, we'll update it from server
 
-    // WebSocket Connection
+    // WebSocket Connection — initial match state is delivered as SYNC_STATE (TYPE + PAYLOAD = LiveMatchState).
     useEffect(() => {
-        // In a real app, you would pass the matchId and token in the URL or headers
-        // e.g. wss://6balls.live/ws/game?matchId=123&token=...
-        const fetchInitialState = async () => {
-            try {
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-                // Trying a more standard route based on common backend patterns
-                const response = await fetch(`${apiUrl}/api/admin/live-state?matchId=${matchId}`, { credentials: 'include' });
-                if (response.ok) {
-                    const data = await response.json();
-                    const ballStr = String(data.ball || "0.1");
-                    const [overs, ballInOver] = ballStr.includes('.') ? ballStr.split('.').map(Number) : [0, Number(ballStr)];
-                    setCurrentBall(ballInOver || 1);
-                    setBallsBowled((overs * 6) + ballInOver);
-                    if (data.score) setScoreStr(data.score);
-                    if (data.batsman) setBatsman(data.batsman);
-                    if (data.bowler) setBowler(data.bowler);
-                    console.log("[WS] Initial state loaded:", data);
-                } else if (response.status === 404) {
-                    console.warn(`[WS] Live state not found at /api/admin/live-state for ${matchId}. Ensure the match is initialized.`);
-                }
-            } catch (err) {
-                console.error("[WS] Error fetching initial state:", err);
-            }
+        const mapPhaseToGameState = (phaseRaw, isLocked) => {
+            const phase = String(phaseRaw || '').toUpperCase();
+            let next = 'LOCKED';
+            if (phase === 'BETTING') next = 'PLACEBET';
+            else if (phase === 'LOCKED') next = 'LOCKED';
+            else if (phase === 'RESULT') next = 'RESULT';
+            else if (phase === 'BREAK') next = 'BREAK';
+            if (isLocked && next === 'PLACEBET') next = 'LOCKED';
+            return next;
         };
 
-        fetchInitialState();
+        const applyLiveMatchState = (data) => {
+            if (!data || typeof data !== 'object') return;
+
+            const payloadMatchId = data.match_id ?? data.matchId;
+            if (payloadMatchId && String(payloadMatchId) !== String(matchId)) {
+                console.warn('[WS] LiveMatchState match_id mismatch:', payloadMatchId, 'expected', matchId);
+            }
+
+            const ballStr = String(data.ball ?? '0.1');
+            const [overs, ballInOver] = ballStr.includes('.')
+                ? ballStr.split('.').map(Number)
+                : [0, Number(ballStr) || 0];
+            const safeBallInOver = Number.isFinite(ballInOver) && ballInOver > 0 ? ballInOver : 1;
+            const safeOvers = Number.isFinite(overs) ? overs : 0;
+
+            setCurrentBall(safeBallInOver);
+            setBallsBowled(safeOvers * 6 + (Number.isFinite(ballInOver) ? ballInOver : 0));
+
+            if (data.score != null) setScoreStr(String(data.score));
+            if (data.batsman != null) setBatsman(data.batsman);
+            if (data.bowler != null) setBowler(data.bowler);
+
+            if (data.status != null && String(data.status).trim() !== '') {
+                setMatchStatus(String(data.status).trim().toLowerCase());
+            }
+
+            const nextGameState = mapPhaseToGameState(data.phase, data.is_locked === true);
+            setGameState(nextGameState);
+            if (nextGameState !== 'BREAK') setBreakLeaderboard(null);
+
+            setAllocations({});
+            setAllocHistory([]);
+            setIsAnimating(false);
+            setIsSubmitted(false);
+
+            console.log('[WS] LiveMatchState applied:', data);
+        };
 
         const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080';
         const fullWsUrl = `${wsUrl}/api/ws?matchId=${matchId}`;
@@ -95,9 +146,26 @@ const GameplayScreen = () => {
 
         ws.current.onmessage = (event) => {
             const message = JSON.parse(event.data);
-            console.log(`[WS] Received message of type: ${message.type}`, message);
+            const msgType = message.TYPE ?? message.type;
+            console.log(`[WS] Received message of type: ${msgType}`, message);
+
+            /* Initial sync on connect + any full-state pushes: TYPE "SYNC_STATE" | "STATE_UPDATE" */
+            if (msgType === 'SYNC_STATE' || msgType === 'STATE_UPDATE') {
+                const payload = message.PAYLOAD ?? message.payload;
+                applyLiveMatchState(payload);
+                return;
+            }
+
+            if (msgType === 'BREAK' || message.type === 'BREAK') {
+                setGameState('BREAK');
+                setIsAnimating(false);
+                const parsed = parseBreakLeaderboardPayload(message);
+                if (parsed) setBreakLeaderboard(parsed);
+                return;
+            }
 
             if (message.type === "PLACEBET") {
+                setBreakLeaderboard(null);
                 setGameState("PLACEBET");
                 setIsSubmitted(false);
                 setIsAnimating(false);
@@ -109,7 +177,7 @@ const GameplayScreen = () => {
                     color: 'var(--color-primary)',
                     type: 'open'
                 });
-                setTimeout(() => setNotification(prev => ({ ...prev, visible: false })), 2000);
+                setTimeout(() => setNotification(prev => ({ ...prev, visible: false })), 2800);
 
                 // Update match data from server payload
                 if (message.data) {
@@ -135,24 +203,33 @@ const GameplayScreen = () => {
                     color: '#EF4444',
                     type: 'locked'
                 });
-                setTimeout(() => setNotification(prev => ({ ...prev, visible: false })), 2000);
+                setTimeout(() => setNotification(prev => ({ ...prev, visible: false })), 2800);
                 // Removed auto-submission as per backend requirements
             }
-            else if (message.type === "RESULT") {
-                setGameState("RESULT");
-                // In some cases, result fields are flat; in others, they are inside message.data
+            else if (msgType === 'RESULT' || message.type === 'RESULT') {
+                const live = message.liveState ?? message.live_state;
+                const appliedLive = live && typeof live === 'object';
+                if (appliedLive) {
+                    applyLiveMatchState(live);
+                } else {
+                    setGameState("RESULT");
+                }
+
+                if (message.balance !== undefined && message.balance !== null) {
+                    setProfitCoins(Number(message.balance));
+                }
+
                 const outcome = message.outcome || (message.data && message.data.outcome);
                 const isLeg = message.isLeg !== undefined ? message.isLeg : (message.data && message.data.isLeg);
                 const winnings = message.winnings !== undefined ? message.winnings : (message.data && message.data.winnings);
-                
-                console.log(`[WS] RESULT Message -> Parsed Outcome: ${outcome}, isLeg: ${isLeg}, Wins: ${winnings}`);
+
+                console.log(`[WS] RESULT Message -> Parsed Outcome: ${outcome}, isLeg: ${isLeg}, Wins: ${winnings}, liveState: ${appliedLive}, balance: ${message.balance}`);
 
                 const normalizedOutcome = normalizeResult(outcome);
-                handleServerResult(normalizedOutcome, isLeg, winnings);
-            }
-            else if (message.type === "BREAK") {
-                setGameState("BREAK");
-                setIsAnimating(false);
+                handleServerResult(normalizedOutcome, isLeg, winnings, {
+                    authoritativeScoreline: appliedLive,
+                    profitSyncedViaBalance: message.balance !== undefined && message.balance !== null,
+                });
             }
         };
 
@@ -165,7 +242,7 @@ const GameplayScreen = () => {
                 ws.current.close();
             }
         };
-    }, []);
+    }, [matchId]);
 
     const submitBetsToServer = useCallback(() => {
         if (!ws.current || ws.current.readyState !== WebSocket.OPEN || isSubmitted) return;
@@ -216,9 +293,11 @@ const GameplayScreen = () => {
         return 'DOT';
     };
 
-    const handleServerResult = useCallback((serverOutcome, isLeg, serverWinnings) => {
+    const handleServerResult = useCallback((serverOutcome, isLeg, serverWinnings, opts = {}) => {
+        const { authoritativeScoreline = false, profitSyncedViaBalance = false } = opts;
+
         setIsAnimating(true);
-        console.log(`[WS] handleServerResult -> Outcome: ${serverOutcome}, Leg: ${isLeg}, Wins: ${serverWinnings}`);
+        console.log(`[WS] handleServerResult -> Outcome: ${serverOutcome}, Leg: ${isLeg}, Wins: ${serverWinnings}`, opts);
 
         // Find matching option for video/colors (serverOutcome is already normalized)
         const outcome = PREDICTION_OPTIONS.find(opt =>
@@ -228,11 +307,11 @@ const GameplayScreen = () => {
         console.log(`[WS] Selected Animation: ${outcome.label} (${outcome.vid})`);
 
         const outcomeRuns = { SINGLE: 1, DOUBLE: 2, FOUR: 4, SIX: 6 }[outcome.label] || 0;
-        setRuns(r => r + outcomeRuns);
-        if (outcome.label === 'WICKET') setWickets(w => w + 1);
-
-        // Increment ballsBowled locally for optimistic UI if needed
-        setBallsBowled(b => b + 1);
+        if (!authoritativeScoreline) {
+            setRuns(r => r + outcomeRuns);
+            if (outcome.label === 'WICKET') setWickets(w => w + 1);
+            setBallsBowled(b => b + 1);
+        }
 
         const sideLabel = isLeg ? 'LEG' : 'OFF';
         const bannerText = outcomeRuns > 0 ? `${outcomeRuns} ${sideLabel}` :
@@ -255,12 +334,14 @@ const GameplayScreen = () => {
             if (serverWinnings && serverWinnings > 0) {
                 setBoomWin(serverWinnings);
                 setFlyWin(serverWinnings);
-                setTimeout(() => setProfitCoins(p => p + serverWinnings), 1200);
+                if (!profitSyncedViaBalance) {
+                    setTimeout(() => setProfitCoins(p => p + serverWinnings), 1200);
+                }
                 setTimeout(() => setFlyWin(null), 1400);
                 setTimeout(() => setBoomWin(null), 2500);
             }
 
-            if (currentBall < 6) {
+            if (!authoritativeScoreline && currentBall < 6) {
                 setCurrentBall(b => b + 1);
             }
 
@@ -328,7 +409,8 @@ const GameplayScreen = () => {
     };
 
     const adminOverBreak = () => {
-        setGameState("BREAK"); // Local simulation
+        setGameState("BREAK");
+        setBreakLeaderboard(null);
         if (!ws.current || ws.current.readyState !== WebSocket.OPEN) return;
         ws.current.send(JSON.stringify({
             type: "ADMIN_COMMAND",
@@ -387,28 +469,36 @@ const GameplayScreen = () => {
                 )}
             </div>
 
-            {/* BALL PROGRESS */}
-            <div className="game__balls">
-                {[1, 2, 3, 4, 5, 6].map(ball => (
-                    <div
-                        key={ball}
-                        className={`game__ball ${ball === currentBall ? 'game__ball--active' : ball < currentBall ? 'game__ball--done' : ''}`}
-                    >
-                        {ball}
+            {/* Ball progress + match info on one row — saves vertical space for the animation */}
+            <div className="game__post-video-row">
+                <div className="game__balls">
+                    {[1, 2, 3, 4, 5, 6].map(ball => (
+                        <div
+                            key={ball}
+                            className={`game__ball ${ball === currentBall + 1 ? 'game__ball--active' : ball <= currentBall ? 'game__ball--done' : ''}`}
+                        >
+                            {ball}
+                        </div>
+                    ))}
+                </div>
+                <div className="game__info-bar">
+                    <div className="game__info-bar-inner">
+                        <div className="game__info-label">
+                            {matchStatus === 'upcoming'
+                                ? 'MATCH UPCOMING'
+                                : matchStatus === 'finished'
+                                  ? 'MATCH ENDED'
+                                  : matchStatus === 'live'
+                                    ? 'SUPER OVER LOBBY'
+                                    : matchStatus.replace(/_/g, ' ').toUpperCase()}
+                        </div>
+                        <div className="game__info-match">{bowler} vs {batsman}</div>
                     </div>
-                ))}
-            </div>
-
-            {/* MATCH INFO + TIMER */}
-            <div className="game__info-bar">
-                <div>
-                    <div className="game__info-label">SUPER OVER LOBBY</div>
-                    <div className="game__info-match">{bowler} vs {batsman}</div>
                 </div>
             </div>
 
             <div className="game__prediction-label glass">
-                BALL {currentBall} {gameState === 'PLACEBET' ? 'PREDICTION' : 'RESULT'}
+                BALL {currentBall + 1} {gameState === 'PLACEBET' ? 'PREDICTION' : 'RESULT'}
                 <div className={`game__state-badge game__state-badge--${gameState.toLowerCase()}`}>
                     {gameState === 'PLACEBET' ? '● LIVE' : gameState === 'LOCKED' ? '● LOCKED' : '● ' + gameState}
                 </div>
@@ -522,6 +612,7 @@ const GameplayScreen = () => {
                             <select value={adminInput.outcome} onChange={e => setAdminInput({ ...adminInput, outcome: e.target.value })}>
                                 {PREDICTION_OPTIONS.map(opt => <option key={opt.label} value={opt.label}>{opt.label}</option>)}
                             </select>
+
                             <input type="number" step="0.1" value={adminInput.multiplier} onChange={e => setAdminInput({ ...adminInput, multiplier: e.target.value })} />
                         </div>
                         <button className="admin-btn admin-btn--orange" onClick={adminSetResult}>🎁 SET RESULT & PAYOUT</button>
@@ -560,7 +651,7 @@ const GameplayScreen = () => {
             {gameState === 'BREAK' && (
                 <div className="game__break-overlay">
                     <div className="game__break-content glass" style={{ padding: 0, overflow: 'hidden' }}>
-                        <LeaderboardOverlay matchId={matchId} />
+                        <LeaderboardOverlay data={breakLeaderboard} />
                     </div>
                 </div>
             )}

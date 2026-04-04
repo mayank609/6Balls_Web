@@ -141,8 +141,6 @@ const LobbyScreen = () => {
                         ) : error || matches.length === 0 ? (
                             <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>
                                 {error ? `Error: ${error}` : 'No live matches found.'}
-                                <br />
-                                <small>Ensure backend is running at http://localhost:8080</small>
                             </div>
                         ) : (
                             <div className="lobby__cards">
