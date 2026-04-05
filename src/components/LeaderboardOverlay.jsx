@@ -18,20 +18,12 @@ function initialFromUserId(id) {
 const LeaderboardOverlay = ({ data }) => {
     const rankedTop = useMemo(() => {
         const raw = data?.top_3 ?? [];
-        return [...raw]
-            .map((p) => ({
-                user_id: p.user_id ?? '',
-                winning_coins: Number(p.winning_coins) || 0,
-            }))
-            .sort((a, b) => b.winning_coins - a.winning_coins)
-            .slice(0, 3)
-            .map((p, idx) => ({
-                rank: idx + 1,
-                user_id: p.user_id,
-                winning_coins: p.winning_coins,
-                displayName: formatUserDisplay(p.user_id),
-                avatar: initialFromUserId(p.user_id),
-            }));
+        return raw.slice(0, 3).map((p, idx) => ({
+            rank: idx + 1,
+            user_id: p.user_id ?? '',
+            displayName: formatUserDisplay(p.user_id ?? ''),
+            avatar: initialFromUserId(p.user_id ?? ''),
+        }));
     }, [data]);
 
     const podiumOrder = useMemo(() => {
@@ -90,7 +82,6 @@ const LeaderboardOverlay = ({ data }) => {
                                 <div className="podium-name" title={player.user_id}>
                                     {player.displayName}
                                 </div>
-                                <div className="podium-points">{player.winning_coins} coins</div>
                             </div>
                         ) : (
                             <div key={`podium-slot-${slotIdx}`} className="podium-item podium-item--empty" aria-hidden />

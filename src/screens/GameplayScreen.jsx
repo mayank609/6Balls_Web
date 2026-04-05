@@ -45,7 +45,7 @@ const GameplayScreen = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const matchId = location.state?.matchId || 'default';
-    const [playCoins, setPlayCoins] = useState(200);
+    const [playCoins, setPlayCoins] = useState(500);
     const [profitCoins, setProfitCoins] = useState(0);
     const [currentBall, setCurrentBall] = useState(1);
     const [runs, setRuns] = useState(0);
@@ -69,7 +69,7 @@ const GameplayScreen = () => {
     const videoRef = useRef(null);
     const ws = useRef(null);
 
-    const totalCoins = playCoins + profitCoins;
+    const totalCoins = playCoins;
     const totalAllocated = Object.values(allocations).reduce((s, arr) => s + arr.reduce((a, b) => a + b, 0), 0);
 
     // New state variables for real-time match data
@@ -105,7 +105,7 @@ const GameplayScreen = () => {
             const [overs, ballInOver] = ballStr.includes('.')
                 ? ballStr.split('.').map(Number)
                 : [0, Number(ballStr) || 0];
-            const safeBallInOver = Number.isFinite(ballInOver) && ballInOver > 0 ? ballInOver : 1;
+            const safeBallInOver = Number.isFinite(ballInOver) ? ballInOver : 0;
             const safeOvers = Number.isFinite(overs) ? overs : 0;
 
             setCurrentBall(safeBallInOver);
@@ -217,6 +217,10 @@ const GameplayScreen = () => {
 
                 if (message.balance !== undefined && message.balance !== null) {
                     setProfitCoins(Number(message.balance));
+                }
+
+                if (message.play_coins !== undefined && message.play_coins !== null) {
+                    setPlayCoins(Number(message.play_coins));
                 }
 
                 const outcome = message.outcome || (message.data && message.data.outcome);
