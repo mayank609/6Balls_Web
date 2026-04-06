@@ -8,7 +8,7 @@ const LoginScreen = () => {
     const navigate = useNavigate();
 
     const handleGoogleLogin = () => {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://api.6balls.live';
         window.location.href = `${apiUrl}/api/auth/player/login`;
     };
 

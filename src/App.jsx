@@ -13,7 +13,7 @@ import MatchStatsScreen from './screens/MatchStatsScreen';
 import HeroSelectionScreen from './screens/HeroSelectionScreen';
 import './index.css';
 
-const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const apiUrl = import.meta.env.VITE_API_URL || 'https://api.6balls.live';
 
 const checkAuthSession = async () => {
   const endpoints = [

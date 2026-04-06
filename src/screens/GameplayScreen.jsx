@@ -131,7 +131,7 @@ const GameplayScreen = () => {
             console.log('[WS] LiveMatchState applied:', data);
         };
 
-        const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080';
+        const wsUrl = import.meta.env.VITE_WS_URL || 'wss://api.6balls.live';
         const fullWsUrl = `${wsUrl}/api/ws?matchId=${matchId}`;
         console.log(`[WS] Initializing connection to: ${fullWsUrl}`);
         ws.current = new WebSocket(fullWsUrl); // Adjust URL as needed

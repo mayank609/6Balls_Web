@@ -19,7 +19,7 @@ const LobbyScreen = () => {
         const fetchFixtures = async () => {
             try {
                 // Assuming backend route is /matches as seen in cmd/server/main.go
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+                const apiUrl = import.meta.env.VITE_API_URL || 'https://api.6balls.live';
                 console.log(`[Lobby] Fetching matches from: ${apiUrl}/api/matches`);
                 const response = await fetch(`${apiUrl}/api/matches`, { credentials: 'include' });
                 if (!response.ok) throw new Error(`Failed to fetch matches: ${response.status} ${response.statusText}`);
